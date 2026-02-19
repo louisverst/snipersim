@@ -1,15 +1,18 @@
+#include "pics.h"
+#include "subsecond_time.h"
+
 #include <iostream>
 
-class DipCount {
+class Dip : PICStack {
 
     private:
-        int fe_stalls{};
-        int be_stalls{};
-        int misspecs{};
+        SubsecondTime fe_stall{};
+        SubsecondTime be_stall{};
+        SubsecondTime misspec{};
 
     public:
-        void account_fe_stall();
-        void account_be_stall();
-        void account_misspecs();
+        void add_fe_stall(uint64_t t);
+        void add_be_stall(uint64_t t);
+        void add_misspec(uint64_t t);
 
 };

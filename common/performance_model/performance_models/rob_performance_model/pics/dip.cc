@@ -1,19 +1,16 @@
 #include "dip.h"
 
-void DipCount::account_fe_stall()
+void Dip::add_fe_stall(uint64_t t)
 {
-    std::cout << "Accounted a front-end stall\n";
-    this->fe_stalls++;
+
 }
 
-void DipCount::account_be_stall()
+void Dip::add_be_stall(uint64_t t)
 {
-    std::cout << "Accounted a back-end stall\n";
-    this->be_stalls++;
+
 }
 
-void DipCount::account_misspecs()
+void Dip::add_misspec(uint64_t t)
 {
-    std::cout << "Accounted for a misspeculation - Yikes!\n";
-    this->misspecs++;
+
 }
