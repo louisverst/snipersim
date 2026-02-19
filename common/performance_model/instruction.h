@@ -7,6 +7,8 @@
 #include <vector>
 #include <sstream>
 
+#include "dip.h"
+
 class Core;
 class MicroOp;
 
@@ -77,6 +79,9 @@ public:
    const std::vector<const MicroOp *>* getMicroOps(void) const
    { return m_uops; }
 
+   DipCount *getDipCount()
+   { return m_dipcount; }
+
 private:
    typedef std::vector<unsigned int> StaticInstructionCosts;
    static StaticInstructionCosts m_instruction_costs;
@@ -89,6 +94,8 @@ private:
    IntPtr m_addr;
    UInt32 m_size;
    bool m_atomic;
+
+   DipCount *m_dipcount;
 
 protected:
    OperandList m_operands;

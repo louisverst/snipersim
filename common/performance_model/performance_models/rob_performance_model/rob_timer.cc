@@ -452,6 +452,8 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
    SubsecondTime next_event = SubsecondTime::MaxTime();
    SubsecondTime *cpiFrontEnd = NULL;
 
+   RobEntry *lastEntry;
+
    if (frontend_stalled_until <= now)
    {
       uint32_t instrs_dispatched = 0, uops_dispatched = 0;
@@ -460,6 +462,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
       {
          LOG_ASSERT_ERROR(m_num_in_rob < rob.size(), "Expected sufficient uops for dispatching in pre-ROB buffer, but didn't find them");
          RobEntry *entry = &rob.at(m_num_in_rob);
+         lastEntry = entry;
          DynamicMicroOp &uop = *entry->uop;
 
          // Dispatch up to 4 instructions
@@ -476,6 +479,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          bool iCacheMiss = (uop.getICacheHitWhere() != HitWhere::L1I);
          if (iCacheMiss)
          {
+            entry->uop->getMicroOp()->getInstruction()->getDipCount()->account_fe_stall();
             if (in_icache_miss)
             {
                // We just took the latency for this instruction, now dispatch it
@@ -531,11 +535,13 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
                std::cout<<"-- branch mispredict"<<std::endl;
             #endif
             cpiFrontEnd = &m_cpiBranchPredictor;
+            
             break;
          }
       }
 
       m_cpiCurrentFrontEndStall = cpiFrontEnd;
+      lastEntry->uop->getMicroOp()->getInstruction()->getDipCount()->account_be_stall();
    }
    else
    {
