@@ -79,7 +79,7 @@ public:
    const std::vector<const MicroOp *>* getMicroOps(void) const
    { return m_uops; }
 
-   DipCount *getDipCount()
+   DipStack *getDipStack()
    { return m_dipcount; }
 
 private:
@@ -95,7 +95,7 @@ private:
    UInt32 m_size;
    bool m_atomic;
 
-   DipCount *m_dipcount;
+   DipStack *m_dipcount;
 
 protected:
    OperandList m_operands;
