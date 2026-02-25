@@ -80,7 +80,7 @@ public:
    { return m_uops; }
 
    DipStack *getDipStack()
-   { return m_dipcount; }
+   { return m_dipstack; }
 
 private:
    typedef std::vector<unsigned int> StaticInstructionCosts;
@@ -95,7 +95,7 @@ private:
    UInt32 m_size;
    bool m_atomic;
 
-   DipStack *m_dipcount;
+   DipStack *m_dipstack;
 
 protected:
    OperandList m_operands;
