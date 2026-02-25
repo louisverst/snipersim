@@ -412,9 +412,6 @@ boost::tuple<uint64_t,SubsecondTime> RobTimer::simulate(const std::vector<Dynami
 #endif
    }
 
-   std::cout << "Total attributed base cycles: " << total_base / m_core->getDvfsDomain()->getPeriod() << "\n";
-   std::cout << "Total number of uops: " << nr_of_uops << "\n";
-
    return boost::tuple<uint64_t,SubsecondTime>(totalInsnExec, totalLat);
 }
 
@@ -512,7 +509,6 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
 
          entry->dispatched = now;
          curr_dip_stack->add_base(m_core->getDvfsDomain()->getPeriod() / dispatchWidth); // this period is constant
-         total_base += m_core->getDvfsDomain()->getPeriod() / dispatchWidth;
          ++m_num_in_rob;
          ++m_rs_entries_used;
 
@@ -520,7 +516,6 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          if (uop.isLast())
          {
             instrs_dispatched++;
-            nr_of_uops += uop.getMicroOp()->getInstruction()->getMicroOps()->size();
          }
          // If uop is already ready, we may need to issue it in the following cycle
          entry->ready = std::max(entry->ready, (now + 1ul).getElapsedTime());
