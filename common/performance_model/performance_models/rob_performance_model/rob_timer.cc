@@ -462,6 +462,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          LOG_ASSERT_ERROR(m_num_in_rob < rob.size(), "Expected sufficient uops for dispatching in pre-ROB buffer, but didn't find them");
          RobEntry *entry = &rob.at(m_num_in_rob);
          DynamicMicroOp &uop = *entry->uop;
+         DipStack* curr_dip_stack = uop.getMicroOp()->getInstruction()->getDipStack();
 
          // Dispatch up to 4 instructions
          if (uops_dispatched == dispatchWidth)
@@ -491,7 +492,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
                   std::cout<<"-- icache miss("<<uop.getICacheLatency()<<")"<<std::endl;
                #endif
                frontend_stalled_until = now + uop.getICacheLatency();
-               entry->uop->getMicroOp()->getInstruction()->getDipStack()->add_fe_stall(uop.getICacheLatency());
+               entry->uop->getMicroOp()->getInstruction()->getDipStack()->add_fe_stall(SubsecondTime::Zero());
                in_icache_miss = true;
                // Don't dispatch this instruction yet
                cpiFrontEnd = &m_cpiInstructionCache[uop.getICacheHitWhere()];
@@ -507,13 +508,15 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          }
 
          entry->dispatched = now;
+         curr_dip_stack->add_base(m_core->getDvfsDomain()->getPeriod() / dispatchWidth); // this period is constant
          ++m_num_in_rob;
          ++m_rs_entries_used;
 
          uops_dispatched++;
          if (uop.isLast())
+         {
             instrs_dispatched++;
-
+         }
          // If uop is already ready, we may need to issue it in the following cycle
          entry->ready = std::max(entry->ready, (now + 1ul).getElapsedTime());
          next_event = std::min(next_event, entry->ready);
@@ -530,7 +533,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          if (uop.getMicroOp()->isBranch() && uop.isBranchMispredicted())
          {
             frontend_stalled_until = SubsecondTime::MaxTime();
-            uop.getMicroOp()->getInstruction()->getDipStack()->add_misspec(misprediction_penalty);
+            uop.getMicroOp()->getInstruction()->getDipStack()->add_mispred(SubsecondTime::Zero());
             #ifdef DEBUG_PERCYCLE
                std::cout<<"-- branch mispredict"<<std::endl;
             #endif
@@ -541,7 +544,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
 
       m_cpiCurrentFrontEndStall = cpiFrontEnd;
       if (be_stall)
-         rob.at(m_num_in_rob).uop->getMicroOp()->getInstruction()->getDipStack()->add_be_stall((4 - uops_dispatched) * 1ul); // how do we determine the number of cycles to attribute?
+         rob.at(m_num_in_rob).uop->getMicroOp()->getInstruction()->getDipStack()->add_be_stall(SubsecondTime::Zero()); // how do we determine (4 - uops_dispatched) * 1ul the number of cycles to attribute?
    }
    else
    {
