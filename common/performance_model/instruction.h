@@ -47,7 +47,11 @@ public:
 
    Instruction(InstructionType type);
 
-   virtual ~Instruction() { };
+   virtual ~Instruction() 
+   { 
+      delete m_dipstack;
+   }
+
    virtual SubsecondTime getCost(Core *core) const;
 
    InstructionType getType() const;

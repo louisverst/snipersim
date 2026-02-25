@@ -27,11 +27,6 @@ Instruction::Instruction(InstructionType type)
 {
 }
 
-Instruction::~Instruction()
-{
-   delete m_dipstack;
-}
-
 InstructionType Instruction::getType() const
 {
     return m_type;

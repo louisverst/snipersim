@@ -1,16 +1,21 @@
 #include "dip.h"
 
-void DipStack::add_fe_stall(uint64_t cycles)
+void DipStack::add_fe_stall(SubsecondTime t)
 {
-    fe_stall += cycles;
+    fe_stall += t;
 }
 
-void DipStack::add_be_stall(uint64_t cycles)
+void DipStack::add_be_stall(SubsecondTime t)
 {
-    be_stall += cycles;
+    be_stall += t;
 }
 
-void DipStack::add_misspec(uint64_t cycles)
+void DipStack::add_mispred(SubsecondTime t)
 {
-    misspec += cycles;
+    mispred += t;
+}
+
+void DipStack::add_base(SubsecondTime t)
+{
+    base += t;
 }

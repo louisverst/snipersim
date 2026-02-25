@@ -54,6 +54,9 @@ private:
    const bool m_no_address_disambiguation;
    const bool inorder;
 
+   SubsecondTime total_base;
+   uint64_t nr_of_uops;
+
    Core *m_core;
 
    typedef CircularQueue<RobEntry> Rob;
