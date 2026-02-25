@@ -1,16 +1,16 @@
 #include "dip.h"
 
-void Dip::add_fe_stall(uint64_t t)
+void DipStack::add_fe_stall(uint64_t cycles)
 {
-
+    fe_stall += cycles;
 }
 
-void Dip::add_be_stall(uint64_t t)
+void DipStack::add_be_stall(uint64_t cycles)
 {
-
+    be_stall += cycles;
 }
 
-void Dip::add_misspec(uint64_t t)
+void DipStack::add_misspec(uint64_t cycles)
 {
-
+    misspec += cycles;
 }

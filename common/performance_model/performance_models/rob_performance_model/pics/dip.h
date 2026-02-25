@@ -3,12 +3,12 @@
 
 #include <iostream>
 
-class Dip : PICStack {
+class DipStack : PICStack {
 
     private:
-        SubsecondTime fe_stall{};
-        SubsecondTime be_stall{};
-        SubsecondTime misspec{};
+        uint64_t fe_stall{};
+        uint64_t be_stall{};
+        uint64_t misspec{};
 
     public:
         void add_fe_stall(uint64_t t);

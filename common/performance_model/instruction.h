@@ -79,8 +79,8 @@ public:
    const std::vector<const MicroOp *>* getMicroOps(void) const
    { return m_uops; }
 
-   DipCount *getDipCount()
-   { return m_dipcount; }
+   DipStack *getDipStack()
+   { return m_dipstack; }
 
 private:
    typedef std::vector<unsigned int> StaticInstructionCosts;
@@ -95,7 +95,7 @@ private:
    UInt32 m_size;
    bool m_atomic;
 
-   DipCount *m_dipcount;
+   DipStack *m_dipstack;
 
 protected:
    OperandList m_operands;
