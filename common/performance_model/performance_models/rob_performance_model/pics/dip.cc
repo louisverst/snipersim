@@ -22,8 +22,7 @@ void DipStack::add_base(SubsecondTime t)
     base += t;
 }
 
-void DipStack::init(){
-    // Wrap vars in a StatsMetric object; evrytime we call recordStats it reads the current object via the pointer.
+void DipStack::record(){
     registerStatsMetric("dip", m_id, "base", &base);
     registerStatsMetric("dip", m_id, "fe_stall", &fe_stall);
     registerStatsMetric("dip", m_id, "be_stall", &be_stall);

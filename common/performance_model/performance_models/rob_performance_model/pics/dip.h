@@ -13,9 +13,14 @@ class DipStack : PICStack {
         SubsecondTime mispred{SubsecondTime::Zero()};
 
     public:
-        DipStack() : m_id(++s_next_id) {};
+        DipStack() : m_id(++s_next_id) {}
 
-        void init();
+        /**
+         * Wraps variables in a StatsMetric object and registers entries
+         * in the name database. When recordStats() is called, the measured
+         * values (accessed via stored pointers) are written to the main database.
+         */
+        void record();
 
         void add_base(SubsecondTime t);
         void add_fe_stall(SubsecondTime t);
