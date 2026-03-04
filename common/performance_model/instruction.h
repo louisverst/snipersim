@@ -6,7 +6,7 @@
 #include "operand.h"
 #include <vector>
 #include <sstream>
-
+#include "stats.h"
 #include "dip.h"
 
 class Core;
