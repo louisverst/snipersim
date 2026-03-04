@@ -47,8 +47,9 @@ public:
 
    Instruction(InstructionType type);
 
-   virtual ~Instruction() 
-   { 
+   virtual ~Instruction()
+   {
+      Sim()->getStatsManager()->recordDip(getAddress(), getTypeName(), m_dipstack);
       delete m_dipstack;
    }
 

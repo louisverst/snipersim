@@ -2,9 +2,12 @@
 
 #include "simulator.h"
 #include "itostr.h"
+#include "dip.h"
 
 #include <cstring>
 #include <sqlite3.h>
+
+class DipStack;
 
 class StatsMetricBase
 {
@@ -79,6 +82,8 @@ class StatsManager
       { logEvent(EVENT_MARKER, time, core_id, thread_id, value0, value1, description); }
       void logEvent(event_type_t event, SubsecondTime time, core_id_t core_id, thread_id_t thread_id, UInt64 value0, UInt64 value1, const char * description);
 
+      void recordDip(unsigned long address, String instr_type, DipStack *stack);
+
    private:
       UInt64 m_keyid;
       UInt64 m_prefixnum;
@@ -87,6 +92,8 @@ class StatsManager
       sqlite3_stmt *m_stmt_insert_name;
       sqlite3_stmt *m_stmt_insert_prefix;
       sqlite3_stmt *m_stmt_insert_value;
+
+      sqlite3_stmt *m_stmt_insert_dip;
 
       // Use std::string here because String (__versa_string) does not provide a hash function for STL containers with gcc < 4.6
       typedef std::unordered_map<UInt64, StatsMetricBase *> StatsIndexList;
