@@ -972,24 +972,23 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
 
    for (auto entry = m_dipMap.begin(); entry != m_dipMap.end(); ++entry)
    {
-      DipStack *dip = entry->second->uop->getMicroOp()->getInstruction()->getDipStack();
+      DipStack* dip = entry->second->uop->getMicroOp()->getInstruction()->getDipStack();
       switch (entry->first)
       {
-      case (DIPComponent::FRONT_END):
-         dip->add_fe_stall(latency - now.getPeriod());
-         break;
+         case (DIPComponent::FRONT_END):
+            dip->add_fe_stall(latency - now.getPeriod());
+            break;
 
-      case (DIPComponent::BACK_END):
-         dip->add_be_stall(latency - now.getPeriod());
-         break;
+         case (DIPComponent::BACK_END):
+            dip->add_be_stall(latency - now.getPeriod());
+            break;
 
-      case (DIPComponent::MISPRED):
-         dip->add_mispred(latency - now.getPeriod());
-         break;
+         case (DIPComponent::MISPRED):
+            dip->add_mispred(latency - now.getPeriod());
+            break;
       }
    }
 
-   //printRob();
 }
 
 void RobTimer::countOutstandingMemop(SubsecondTime time)

@@ -69,6 +69,7 @@ PseudoInstruction::PseudoInstruction(SubsecondTime cost, InstructionType type)
 
 PseudoInstruction::~PseudoInstruction()
 {
+   std::cout << "PseudoInstruction destr call\n";
 }
 
 SubsecondTime PseudoInstruction::getCost(Core *core) const
