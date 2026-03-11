@@ -1,6 +1,5 @@
 #include "dip.h"
 
-uint64_t DipStack::s_next_id = 0;
 
 void DipStack::add_fe_stall(SubsecondTime t)
 {
@@ -34,10 +33,10 @@ UInt64 DipStack::get_fe_stall_cyc() const
 
 UInt64 DipStack::get_be_stall_cyc() const
 {
-    return static_cast<float>(be_stall.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());;
+    return static_cast<float>(be_stall.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());
 }
 
 UInt64 DipStack::get_mispred_cyc() const
 {
-    return static_cast<float>(mispred.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());;
+    return static_cast<float>(mispred.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());
 }
