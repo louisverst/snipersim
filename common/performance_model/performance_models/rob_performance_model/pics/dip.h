@@ -4,7 +4,8 @@
 #include "pics.h"
 #include "subsecond_time.h"
 #include "fixed_types.h"
-
+#include "simulator.h"
+#include "dvfs_manager.h"
 #include <iostream>
 
 class DipStack : PICStack {

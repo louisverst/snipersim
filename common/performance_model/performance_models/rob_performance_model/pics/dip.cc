@@ -4,25 +4,25 @@ uint64_t DipStack::s_next_id = 0;
 
 void DipStack::add_fe_stall(SubsecondTime t)
 {
-    std::cout << "Front end stall add " << t << "\n";
+    std::cout << "Front end stall add " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
     fe_stall += t;
 }
 
 void DipStack::add_be_stall(SubsecondTime t)
 {
-    std::cout << "Back end stall add " << t << "\n";
+    std::cout << "Back end stall add " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
     be_stall += t;
 }
 
 void DipStack::add_mispred(SubsecondTime t)
 {
-    std::cout << "Misprediction stall add " << t << "\n";
+    std::cout << "Misprediction stall add " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
     mispred += t;
 }
 
 void DipStack::add_base(SubsecondTime t)
 {
-    std::cout << "Base add " << t << "\n";
+    std::cout << "Base add " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
     base += t;
 }
 
