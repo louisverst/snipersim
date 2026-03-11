@@ -6,7 +6,7 @@
 #include "operand.h"
 #include <vector>
 #include <sstream>
-
+#include "stats.h"
 #include "dip.h"
 
 class Core;
@@ -47,8 +47,9 @@ public:
 
    Instruction(InstructionType type);
 
-   virtual ~Instruction() 
-   { 
+   virtual ~Instruction()
+   {
+      Sim()->getStatsManager()->recordDip(getAddress(), getTypeName(), m_dipstack);
       delete m_dipstack;
    }
 

@@ -24,6 +24,10 @@ const char* db_create_stmts[] = {
    "CREATE TABLE `values` (prefixid INTEGER, nameid INTEGER, core INTEGER, value INTEGER);",
    "CREATE INDEX `idx_prefix_name` ON `prefixes`(`prefixname`);",
    "CREATE INDEX `idx_value_prefix` ON `values`(`prefixid`);",
+
+   // PICS
+   "CREATE TABLE `dip` (addr TEXT, instr_type TEXT, base INTEGER, fe_stall INTEGER, be_stall INTEGER, mispred INTEGER);",
+
    // Other users
    "CREATE TABLE `topology` (componentname TEXT, coreid INTEGER, masterid INTEGER);",
    "CREATE TABLE `event` (event INTEGER, time INTEGER, core INTEGER, thread INTEGER, value0 INTEGER, value1 INTEGER, description TEXT);",
@@ -31,6 +35,7 @@ const char* db_create_stmts[] = {
 const char db_insert_stmt_name[] = "INSERT INTO `names` (nameid, objectname, metricname) VALUES (?, ?, ?);";
 const char db_insert_stmt_prefix[] = "INSERT INTO `prefixes` (prefixid, prefixname) VALUES (?, ?);";
 const char db_insert_stmt_value[] = "INSERT INTO `values` (prefixid, nameid, core, value) VALUES (?, ?, ?, ?);";
+const char db_insert_stmt_dip[] = "INSERT INTO `dip` (addr, instr_type, base, fe_stall, be_stall, mispred) VALUES (?, ?, ?, ?, ?, ?);";
 
 UInt64 getWallclockTimeCallback(String objectName, UInt32 index, String metricName, UInt64 arg)
 {
@@ -62,6 +67,7 @@ StatsManager::~StatsManager()
       sqlite3_finalize(m_stmt_insert_name);
       sqlite3_finalize(m_stmt_insert_prefix);
       sqlite3_finalize(m_stmt_insert_value);
+      sqlite3_finalize(m_stmt_insert_dip);
       sqlite3_close(m_db);
    }
 }
@@ -89,6 +95,7 @@ StatsManager::init()
    sqlite3_prepare(m_db, db_insert_stmt_name, -1, &m_stmt_insert_name, NULL);
    sqlite3_prepare(m_db, db_insert_stmt_prefix, -1, &m_stmt_insert_prefix, NULL);
    sqlite3_prepare(m_db, db_insert_stmt_value, -1, &m_stmt_insert_value, NULL);
+   sqlite3_prepare(m_db, db_insert_stmt_dip, -1, &m_stmt_insert_dip, NULL);
 
    sqlite3_exec(m_db, "BEGIN TRANSACTION", NULL, NULL, NULL);
    for(StatsObjectList::iterator it1 = m_objects.begin(); it1 != m_objects.end(); ++it1)
@@ -273,4 +280,24 @@ StatHist::print()
    for(int i = 1; i < HIST_MAX; ++i)
       printf(",%lu", hist[i]);
    printf(")\n");
+}
+
+void
+StatsManager::recordDip(unsigned long address, String instr_type, DipStack* stack)
+{
+   int res;
+
+   std::string a = std::to_string(address);
+
+   sqlite3_reset(m_stmt_insert_dip);
+   sqlite3_clear_bindings(m_stmt_insert_dip);
+   sqlite3_bind_text(m_stmt_insert_dip, 1, a.c_str(), -1, SQLITE_TRANSIENT);
+   sqlite3_bind_text(m_stmt_insert_dip, 2, instr_type.c_str(), -1, SQLITE_TRANSIENT);
+   sqlite3_bind_int(m_stmt_insert_dip, 3, stack->get_base_cyc());
+   sqlite3_bind_int(m_stmt_insert_dip, 4, stack->get_fe_stall_cyc());
+   sqlite3_bind_int(m_stmt_insert_dip, 5, stack->get_be_stall_cyc());
+   sqlite3_bind_int(m_stmt_insert_dip, 6, stack->get_mispred_cyc());
+
+   res = sqlite3_step(m_stmt_insert_dip);
+   LOG_ASSERT_ERROR(res == SQLITE_DONE, "Error executing SQL statement: %s", sqlite3_errmsg(m_db));
 }

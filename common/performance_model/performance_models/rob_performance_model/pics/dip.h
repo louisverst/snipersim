@@ -1,6 +1,10 @@
+#ifndef DIP_H_
+#define DIP_H_
+
 #include "pics.h"
 #include "subsecond_time.h"
-#include "stats.h"
+#include "fixed_types.h"
+
 #include <iostream>
 
 class DipStack : PICStack {
@@ -12,18 +16,19 @@ class DipStack : PICStack {
         SubsecondTime be_stall{SubsecondTime::Zero()};
         SubsecondTime mispred{SubsecondTime::Zero()};
 
+        
     public:
         DipStack() : m_id(++s_next_id) {}
-
-        /**
-         * Wraps variables in a StatsMetric object and registers entries
-         * in the name database. When recordStats() is called, the measured
-         * values (accessed via stored pointers) are written to the main database.
-         */
-        void record();
 
         void add_base(SubsecondTime t);
         void add_fe_stall(SubsecondTime t);
         void add_be_stall(SubsecondTime t);
         void add_mispred(SubsecondTime t);
+
+        UInt64 get_base_cyc() const;
+        UInt64 get_fe_stall_cyc() const;
+        UInt64 get_be_stall_cyc() const;
+        UInt64 get_mispred_cyc() const;
 };
+
+#endif

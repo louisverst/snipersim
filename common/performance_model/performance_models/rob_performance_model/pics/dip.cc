@@ -22,9 +22,22 @@ void DipStack::add_base(SubsecondTime t)
     base += t;
 }
 
-void DipStack::record(){
-    registerStatsMetric("dip", m_id, "base", &base);
-    registerStatsMetric("dip", m_id, "fe_stall", &fe_stall);
-    registerStatsMetric("dip", m_id, "be_stall", &be_stall);
-    registerStatsMetric("dip", m_id, "mispred", &mispred);
+UInt64 DipStack::get_base_cyc() const
+{
+    return base.getFS();
+}
+
+UInt64 DipStack::get_fe_stall_cyc() const
+{
+    return fe_stall.getFS();
+}
+
+UInt64 DipStack::get_be_stall_cyc() const
+{
+    return be_stall.getFS();
+}
+
+UInt64 DipStack::get_mispred_cyc() const
+{
+    return mispred.getFS();
 }
