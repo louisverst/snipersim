@@ -28,20 +28,20 @@ void DipStack::add_base(SubsecondTime t)
 
 UInt64 DipStack::get_base_cyc() const
 {
-    return base.getFS();
+    return static_cast<float>(base.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());
 }
 
 UInt64 DipStack::get_fe_stall_cyc() const
 {
-    return fe_stall.getFS();
+    return static_cast<float>(fe_stall.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());
 }
 
 UInt64 DipStack::get_be_stall_cyc() const
 {
-    return be_stall.getFS();
+    return static_cast<float>(be_stall.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());;
 }
 
 UInt64 DipStack::get_mispred_cyc() const
 {
-    return mispred.getFS();
+    return static_cast<float>(mispred.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());;
 }

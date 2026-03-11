@@ -988,6 +988,8 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
          break;
       }
    }
+
+   //printRob();
 }
 
 void RobTimer::countOutstandingMemop(SubsecondTime time)
