@@ -16,7 +16,7 @@ class DipStack : PICStack {
         SubsecondTime be_stall{SubsecondTime::Zero()};
         SubsecondTime mispred{SubsecondTime::Zero()};
 
-        
+
     public:
         DipStack() : m_id(++s_next_id) {}
 
@@ -29,6 +29,7 @@ class DipStack : PICStack {
         UInt64 get_fe_stall_cyc() const;
         UInt64 get_be_stall_cyc() const;
         UInt64 get_mispred_cyc() const;
+
 };
 
 #endif
