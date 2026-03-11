@@ -8,8 +8,15 @@
 #include "interval_timer.h"
 #include "rob_contention.h"
 #include "stats.h"
-
+#include <map>
 #include <deque>
+
+enum class DIPComponent {
+   BASE,
+   FRONT_END,
+   BACK_END,
+   MISPRED
+};
 
 class RobTimer
 {
@@ -114,6 +121,8 @@ private:
    std::vector<uint64_t> m_producerInsDistance;
 
    PerformanceModel *perf;
+
+   std::map<DIPComponent, RobEntry *> m_dipMap;
 
 #if DEBUG_IT_INSN_PRINT
    FILE *m_insn_log;

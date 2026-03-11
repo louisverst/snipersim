@@ -60,6 +60,7 @@ RobTimer::RobTimer(
       , perf(_perf)
       , m_cpiCurrentFrontEndStall(NULL)
       , m_mlp_histogram(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/mlp_histogram", core->getId()))
+      , m_dipMap()
 {
 
    registerStatsMetric("rob_timer", core->getId(), "time_skipped", &time_skipped);
@@ -457,6 +458,8 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
       uint32_t instrs_dispatched = 0, uops_dispatched = 0;
       bool be_stall;
 
+      m_dipMap.clear();
+
       while(!(be_stall = !(m_num_in_rob < windowSize)))
       {
          LOG_ASSERT_ERROR(m_num_in_rob < rob.size(), "Expected sufficient uops for dispatching in pre-ROB buffer, but didn't find them");
@@ -492,8 +495,10 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
                   std::cout<<"-- icache miss("<<uop.getICacheLatency()<<")"<<std::endl;
                #endif
                frontend_stalled_until = now + uop.getICacheLatency();
-               entry->uop->getMicroOp()->getInstruction()->getDipStack()->add_fe_stall(SubsecondTime::Zero());
                in_icache_miss = true;
+
+
+               m_dipMap.insert({DIPComponent::FRONT_END, entry});
                // Don't dispatch this instruction yet
                cpiFrontEnd = &m_cpiInstructionCache[uop.getICacheHitWhere()];
                break;
@@ -533,7 +538,8 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          if (uop.getMicroOp()->isBranch() && uop.isBranchMispredicted())
          {
             frontend_stalled_until = SubsecondTime::MaxTime();
-            uop.getMicroOp()->getInstruction()->getDipStack()->add_mispred(SubsecondTime::Zero());
+
+            m_dipMap.insert({DIPComponent::MISPRED, entry});
             #ifdef DEBUG_PERCYCLE
                std::cout<<"-- branch mispredict"<<std::endl;
             #endif
@@ -544,7 +550,9 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
 
       m_cpiCurrentFrontEndStall = cpiFrontEnd;
       if (be_stall)
-         rob.at(m_num_in_rob).uop->getMicroOp()->getInstruction()->getDipStack()->add_be_stall(SubsecondTime::Zero()); // how do we determine (4 - uops_dispatched) * 1ul the number of cycles to attribute?
+      {
+         m_dipMap.insert({DIPComponent::BACK_END, &rob.at(m_num_in_rob)});
+      }
    }
    else
    {
@@ -972,6 +980,27 @@ void RobTimer::execute(uint64_t& instructionsExecuted, SubsecondTime& latency)
 
    LOG_ASSERT_ERROR(cpiComponent != NULL, "We expected cpiComponent to be set by doDispatch, but it wasn't");
    *cpiComponent += latency;
+
+   for(auto entry = m_dipMap.begin(); entry != m_dipMap.end(); ++entry)
+   {
+      DipStack* dip = entry->second->uop->getMicroOp()->getInstruction()->getDipStack();
+      switch (entry->first) 
+      {
+         case (DIPComponent::FRONT_END):
+            dip->add_fe_stall(latency - now.getPeriod());
+            break;
+         
+         case (DIPComponent::BACK_END):
+            dip->add_be_stall(latency - now.getPeriod());
+            break;
+         
+         case (DIPComponent::MISPRED):
+            dip->add_mispred(latency - now.getPeriod());
+            break;       
+      }
+   }
+
+   printRob();
 }
 
 void RobTimer::countOutstandingMemop(SubsecondTime time)
