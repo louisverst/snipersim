@@ -855,10 +855,10 @@ void TraceThread::run()
 
    SubsecondTime time_end = prfmdl->getElapsedTime();
 
+   writeDIPs();
+
    Sim()->getThreadManager()->onThreadExit(m_thread->getId());
    Sim()->getTraceManager()->signalDone(this, time_end, m_stop /*aborted*/);
-
-   writeDIPs();
 }
 
 void TraceThread::spawn()

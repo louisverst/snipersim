@@ -26,7 +26,7 @@ const char* db_create_stmts[] = {
    "CREATE INDEX `idx_value_prefix` ON `values`(`prefixid`);",
 
    // PICS
-   "CREATE TABLE `dip` (addr TEXT, instr_type TEXT, base INTEGER, fe_stall INTEGER, be_stall INTEGER, mispred INTEGER);",
+   "CREATE TABLE `dip` (addr TEXT, instr_type TEXT, base REAL, fe_stall REAL, be_stall REAL, mispred REAL);",
 
    // Other users
    "CREATE TABLE `topology` (componentname TEXT, coreid INTEGER, masterid INTEGER);",
@@ -291,10 +291,10 @@ StatsManager::recordDip(unsigned long address, String instr_type, DipStack* stac
    sqlite3_clear_bindings(m_stmt_insert_dip);
    sqlite3_bind_text(m_stmt_insert_dip, 1, std::to_string(address).c_str(), -1, SQLITE_TRANSIENT);
    sqlite3_bind_text(m_stmt_insert_dip, 2, instr_type.c_str(), -1, SQLITE_TRANSIENT);
-   sqlite3_bind_int(m_stmt_insert_dip, 3, stack->get_base_cyc());
-   sqlite3_bind_int(m_stmt_insert_dip, 4, stack->get_fe_stall_cyc());
-   sqlite3_bind_int(m_stmt_insert_dip, 5, stack->get_be_stall_cyc());
-   sqlite3_bind_int(m_stmt_insert_dip, 6, stack->get_mispred_cyc());
+   sqlite3_bind_double(m_stmt_insert_dip, 3, stack->get_base_cyc());
+   sqlite3_bind_double(m_stmt_insert_dip, 4, stack->get_fe_stall_cyc());
+   sqlite3_bind_double(m_stmt_insert_dip, 5, stack->get_be_stall_cyc());
+   sqlite3_bind_double(m_stmt_insert_dip, 6, stack->get_mispred_cyc());
 
    res = sqlite3_step(m_stmt_insert_dip);
    LOG_ASSERT_ERROR(res == SQLITE_DONE, "Error executing SQL statement: %s", sqlite3_errmsg(m_db));
