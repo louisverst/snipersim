@@ -405,6 +405,7 @@ Instruction* TraceThread::decode(Sift::Instruction &inst)
    else
       instruction = new GenericInstruction(list);
 
+   instruction->setVaddress(inst.sinst->addr);
    instruction->setAddress(va2pa(inst.sinst->addr));
    instruction->setSize(inst.sinst->size);
    instruction->setAtomic(dec_inst.is_atomic());
@@ -635,7 +636,6 @@ void TraceThread::handleInstructionDetailed(Sift::Instruction &inst, Sift::Instr
       m_icache[inst.sinst->addr] = decode(inst);
    // Here get the decoder instruction without checking, because we must have it for sure
    const dl::DecodedInst &dec_inst = *(m_decoder_cache[inst.sinst->addr]);
-
    Instruction *ins = m_icache[inst.sinst->addr];
    DynamicInstruction *dynins = prfmdl->createDynamicInstruction(ins, va2pa(inst.sinst->addr));
 
@@ -923,7 +923,7 @@ void TraceThread::writeDIPs()
 {
    for (auto& p : m_icache)
    {
-      Sim()->getStatsManager()->recordDip(p.second->getAddress(), p.second->getTypeName(), p.second->getDipStack());
+      Sim()->getStatsManager()->recordDip(p.second->getVaddress(), p.second->getTypeName(), p.second->getDipStack());
    }
 }
 

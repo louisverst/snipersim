@@ -86,6 +86,9 @@ public:
    DipStack *getDipStack()
    { return m_dipstack; }
 
+   void setVaddress(IntPtr vaddr) { m_vaddr = vaddr; }
+   IntPtr getVaddress() { return m_vaddr; }
+
 private:
    typedef std::vector<unsigned int> StaticInstructionCosts;
    static StaticInstructionCosts m_instruction_costs;
@@ -95,6 +98,7 @@ private:
 
    const std::vector<const MicroOp *> *m_uops;
 
+   IntPtr m_vaddr;
    IntPtr m_addr;
    UInt32 m_size;
    bool m_atomic;
