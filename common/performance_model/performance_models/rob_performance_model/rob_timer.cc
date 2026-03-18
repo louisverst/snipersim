@@ -437,11 +437,22 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
 
    if (frontend_stalled_until <= now)
    {
-      bool be_stall;
-
       m_dipMap.clear();
 
-      while (!(be_stall = !(m_num_in_rob < windowSize)))
+      bool be_stall = !(m_num_in_rob < windowSize);
+
+      // Check if this instruction that generates a be stall isn't cache missed
+      if (be_stall) 
+      {
+         DynamicMicroOp &curr_uop = *(rob.at(m_num_in_rob).uop);
+
+         if (curr_uop.getICacheHitWhere() != HitWhere::L1I) 
+         {
+            be_stall = false;
+         }
+      }
+
+      while (!be_stall)
       {
          LOG_ASSERT_ERROR(m_num_in_rob < rob.size(), "Expected sufficient uops for dispatching in pre-ROB buffer, but didn't find them");
          RobEntry *entry = &rob.at(m_num_in_rob);
