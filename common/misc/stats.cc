@@ -294,10 +294,10 @@ StatsManager::recordDip(unsigned long address, const char *instr_type, DipStack*
    sqlite3_clear_bindings(m_stmt_insert_dip);
    sqlite3_bind_text(m_stmt_insert_dip, 1, stream.str().c_str(), -1, SQLITE_TRANSIENT);
    sqlite3_bind_text(m_stmt_insert_dip, 2, instr_type, -1, SQLITE_TRANSIENT);
-   sqlite3_bind_double(m_stmt_insert_dip, 3, stack->get_base_cyc());
-   sqlite3_bind_double(m_stmt_insert_dip, 4, stack->get_fe_stall_cyc());
-   sqlite3_bind_double(m_stmt_insert_dip, 5, stack->get_be_stall_cyc());
-   sqlite3_bind_double(m_stmt_insert_dip, 6, stack->get_mispred_cyc());
+   sqlite3_bind_double(m_stmt_insert_dip, 3, std::round(stack->get_base_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_dip, 4, std::round(stack->get_fe_stall_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_dip, 5, std::round(stack->get_be_stall_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_dip, 6, std::round(stack->get_mispred_cyc() * 100.0) / 100.0);
 
    res = sqlite3_step(m_stmt_insert_dip);
    LOG_ASSERT_ERROR(res == SQLITE_DONE, "Error executing SQL statement: %s", sqlite3_errmsg(m_db));
