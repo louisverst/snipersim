@@ -924,7 +924,8 @@ void TraceThread::writeDIPs()
 {
    for (auto& p : m_icache)
    {
-      Sim()->getStatsManager()->recordDip(p.second->getVaddress(), p.second->getName(), p.second->getDipStack());
+      if (p.second)
+         Sim()->getStatsManager()->recordDip(p.second->getVaddress(), p.second->getName(), p.second->getDipStack());
    }
 }
 

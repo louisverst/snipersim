@@ -82,7 +82,7 @@ class StatsManager
       { logEvent(EVENT_MARKER, time, core_id, thread_id, value0, value1, description); }
       void logEvent(event_type_t event, SubsecondTime time, core_id_t core_id, thread_id_t thread_id, UInt64 value0, UInt64 value1, const char * description);
 
-      void recordDip(unsigned long address, const char *instr_type, DipStack *stack);
+      void recordDip(unsigned long address, const char* instr_type, DipStack *stack);
 
    private:
       UInt64 m_keyid;

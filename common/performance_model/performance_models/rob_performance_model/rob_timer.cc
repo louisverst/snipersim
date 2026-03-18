@@ -428,8 +428,10 @@ SubsecondTime *RobTimer::findCpiComponent()
 
 SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
 {
+
    SubsecondTime next_event = SubsecondTime::MaxTime();
    SubsecondTime *cpiFrontEnd = NULL;
+   bool account_dip = true;
 
    uint32_t instrs_dispatched = 0, uops_dispatched = 0;
 
@@ -444,7 +446,15 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          LOG_ASSERT_ERROR(m_num_in_rob < rob.size(), "Expected sufficient uops for dispatching in pre-ROB buffer, but didn't find them");
          RobEntry *entry = &rob.at(m_num_in_rob);
          DynamicMicroOp &uop = *entry->uop;
-         DipStack *curr_dip_stack = uop.getMicroOp()->getInstruction()->getDipStack();
+         DipStack *curr_dip_stack;
+
+         if (!uop.getMicroOp()->getInstruction())
+         {
+            account_dip = false;
+         }
+
+         if (account_dip)
+            curr_dip_stack = uop.getMicroOp()->getInstruction()->getDipStack();
 
          // Dispatch up to 4 instructions
          if (uops_dispatched == dispatchWidth)
@@ -491,7 +501,8 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          }
 
          entry->dispatched = now;
-         curr_dip_stack->add_base(now.getPeriod() / dispatchWidth); // this period is constant
+         if (account_dip)
+            curr_dip_stack->add_base(now.getPeriod() / dispatchWidth); // this period is constant
          ++m_num_in_rob;
          ++m_rs_entries_used;
 
@@ -567,6 +578,10 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
    // get the latency for these dispatch slots
    for (auto entry = m_dipMap.begin(); entry != m_dipMap.end(); ++entry)
    {
+      if (!entry->second->uop->getMicroOp()->getInstruction())
+      {
+         continue;
+      }
       // calculate number of base slots that are unaccounted for
       SubsecondTime base_latency = (static_cast<float>(dispatchWidth - uops_dispatched) / static_cast<float>(dispatchWidth)) * now.getPeriod();
 
@@ -972,6 +987,10 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
 
    for (auto entry = m_dipMap.begin(); entry != m_dipMap.end(); ++entry)
    {
+      if (!entry->second->uop->getMicroOp()->getInstruction())
+      {
+         continue;
+      }
       DipStack* dip = entry->second->uop->getMicroOp()->getInstruction()->getDipStack();
       switch (entry->first)
       {

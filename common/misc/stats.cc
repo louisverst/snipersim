@@ -283,7 +283,7 @@ StatHist::print()
 }
 
 void
-StatsManager::recordDip(unsigned long address, const char *instr_type, DipStack* stack)
+StatsManager::recordDip(unsigned long address, const char* instr_type, DipStack* stack)
 {
    int res;
 
