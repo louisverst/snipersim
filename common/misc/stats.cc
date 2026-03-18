@@ -283,14 +283,17 @@ StatHist::print()
 }
 
 void
-StatsManager::recordDip(unsigned long address, String instr_type, DipStack* stack)
+StatsManager::recordDip(unsigned long address, const char *instr_type, DipStack* stack)
 {
    int res;
 
+   std::stringstream stream;
+   stream << "0x" << std::hex << address;
+
    sqlite3_reset(m_stmt_insert_dip);
    sqlite3_clear_bindings(m_stmt_insert_dip);
-   sqlite3_bind_text(m_stmt_insert_dip, 1, std::to_string(address).c_str(), -1, SQLITE_TRANSIENT);
-   sqlite3_bind_text(m_stmt_insert_dip, 2, instr_type.c_str(), -1, SQLITE_TRANSIENT);
+   sqlite3_bind_text(m_stmt_insert_dip, 1, stream.str().c_str(), -1, SQLITE_TRANSIENT);
+   sqlite3_bind_text(m_stmt_insert_dip, 2, instr_type, -1, SQLITE_TRANSIENT);
    sqlite3_bind_double(m_stmt_insert_dip, 3, stack->get_base_cyc());
    sqlite3_bind_double(m_stmt_insert_dip, 4, stack->get_fe_stall_cyc());
    sqlite3_bind_double(m_stmt_insert_dip, 5, stack->get_be_stall_cyc());

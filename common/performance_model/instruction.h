@@ -86,6 +86,13 @@ public:
    DipStack *getDipStack()
    { return m_dipstack; }
 
+   void setName(const char *name)
+   { this->name = name; }
+
+   const char *getName() const
+   { return this->name; }
+
+
 private:
    typedef std::vector<unsigned int> StaticInstructionCosts;
    static StaticInstructionCosts m_instruction_costs;
@@ -100,6 +107,7 @@ private:
    bool m_atomic;
 
    DipStack *m_dipstack;
+   const char *name;
 
 protected:
    OperandList m_operands;
