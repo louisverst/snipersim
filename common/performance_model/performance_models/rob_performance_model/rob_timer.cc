@@ -1015,7 +1015,7 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
          case (DIPComponent::MISPRED):
             dip->add_mispred(latency - now.getPeriod());
             break;
-      }
+      } 
    }
 
 }
