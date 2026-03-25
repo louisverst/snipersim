@@ -1,23 +1,36 @@
 #include "dip.h"
 
+//#define DEBUG_DIP
 
 void DipStack::add_fe_stall(SubsecondTime t)
 {
+#ifdef DEBUG_DIP
+    std::cout << "Adding fe: " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
+#endif
     fe_stall += t;
 }
 
 void DipStack::add_be_stall(SubsecondTime t)
 {
+#ifdef DEBUG_DIP
+    std::cout << "Adding be: " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
+#endif
     be_stall += t;
 }
 
 void DipStack::add_mispred(SubsecondTime t)
 {
+#ifdef DEBUG_DIP
+    std::cout << "Adding mispred: " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
+#endif
     mispred += t;
 }
 
 void DipStack::add_base(SubsecondTime t)
 {
+#ifdef DEBUGDIP
+    std::cout << "Adding base: " << static_cast<float>(t.getFS()) / static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS()) << "\n";
+#endif
     base += t;
 }
 
