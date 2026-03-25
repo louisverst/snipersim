@@ -442,11 +442,11 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
       bool be_stall = !(m_num_in_rob < windowSize);
 
       // Check if this instruction that generates a be stall isn't cache missed
-      if (be_stall) 
+      if (be_stall)
       {
          DynamicMicroOp &curr_uop = *(rob.at(m_num_in_rob).uop);
 
-         if (curr_uop.getICacheHitWhere() != HitWhere::L1I) 
+         if (curr_uop.getICacheHitWhere() != HitWhere::L1I)
          {
             be_stall = false;
          }
@@ -909,14 +909,18 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
       LOG_ASSERT_ERROR(will_skip == false, "Cycle would have been skipped but stuff happened");
 #endif
 
+      // attribute compute cycles
       ++num_committed;
       if (num_committed == commitWidth)
          break;
    }
 
    if (rob.size())
+      // if we didnt commit commitWidth, but there are still instructions, we have a stall
       return rob.front().done;
    else
+      // front end stalled, because ROB is empty.
+      // we know wich instruction this is from the preROB. All the cycles that the ROB is empty needs to go to this guy
       return SubsecondTime::MaxTime();
 }
 
