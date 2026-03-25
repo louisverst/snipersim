@@ -7,7 +7,7 @@
 #include <vector>
 #include <sstream>
 #include "stats.h"
-#include "dip.h"
+#include "pics.h"
 
 class Core;
 class MicroOp;
@@ -36,8 +36,8 @@ enum InstructionType
    MAX_INSTRUCTION_COUNT
 };
 
-__attribute__ ((unused)) static const char * INSTRUCTION_NAMES [] =
-{"generic","add","sub","mul","div","fadd","fsub","fmul","fdiv","jmp","branch", "dynamic_misc","recv","sync","spawn","tlb_miss","mem_access","delay","unknown"};
+__attribute__((unused)) static const char *INSTRUCTION_NAMES[] =
+    {"generic", "add", "sub", "mul", "div", "fadd", "fsub", "fmul", "fdiv", "jmp", "branch", "dynamic_misc", "recv", "sync", "spawn", "tlb_miss", "mem_access", "delay", "unknown"};
 
 class Instruction
 {
@@ -49,7 +49,8 @@ public:
 
    virtual ~Instruction()
    {
-      delete m_dipstack;
+      delete m_PICS_c;
+      delete m_PICS_d;
    }
 
    virtual SubsecondTime getCost(Core *core) const;
@@ -57,14 +58,20 @@ public:
    InstructionType getType() const;
    String getTypeName() const;
    bool isPseudo() const
-   { return getType() >= INST_PSEUDO_MISC; }
+   {
+      return getType() >= INST_PSEUDO_MISC;
+   }
    bool isIdle() const
-   { return getType() == INST_SYNC || getType() == INST_DELAY || getType() == INST_RECV; }
+   {
+      return getType() == INST_SYNC || getType() == INST_DELAY || getType() == INST_RECV;
+   }
 
    static void initializeStaticInstructionModel();
 
-   const OperandList& getOperands() const
-   { return m_operands; }
+   const OperandList &getOperands() const
+   {
+      return m_operands;
+   }
 
    void setAddress(IntPtr addr) { m_addr = addr; }
    IntPtr getAddress() const { return m_addr; }
@@ -75,22 +82,37 @@ public:
    bool isAtomic() const { return m_atomic; }
 
    void setDisassembly(String str) { m_disas = str; }
-   const String& getDisassembly(void) const { return m_disas; }
+   const String &getDisassembly(void) const { return m_disas; }
 
    void setMicroOps(const std::vector<const MicroOp *> *uops)
-   { m_uops = uops; }
+   {
+      m_uops = uops;
+   }
 
-   const std::vector<const MicroOp *>* getMicroOps(void) const
-   { return m_uops; }
+   const std::vector<const MicroOp *> *getMicroOps(void) const
+   {
+      return m_uops;
+   }
 
-   DipStack *getDipStack()
-   { return m_dipstack; }
+   PICS_d *getPICS_d()
+   {
+      return m_PICS_d;
+   }
+
+   PICS_c *getPICS_c()
+   {
+      return m_PICS_c;
+   }
 
    void setName(const char *name)
-   { this->name = name; }
+   {
+      this->name = name;
+   }
 
    const char *getName() const
-   { return this->name; }
+   {
+      return this->name;
+   }
 
    void setVaddress(IntPtr vaddr) { m_vaddr = vaddr; }
    IntPtr getVaddress() { return m_vaddr; }
@@ -109,7 +131,8 @@ private:
    UInt32 m_size;
    bool m_atomic;
 
-   DipStack *m_dipstack;
+   PICS_d *m_PICS_d;
+   PICS_c *m_PICS_c;
    const char *name;
 
 protected:
@@ -120,24 +143,27 @@ class GenericInstruction : public Instruction
 {
 public:
    GenericInstruction(OperandList &operands)
-      : Instruction(INST_GENERIC, operands)
-   {}
+       : Instruction(INST_GENERIC, operands)
+   {
+   }
 };
 
 class ArithInstruction : public Instruction
 {
 public:
    ArithInstruction(InstructionType type, OperandList &operands)
-      : Instruction(type, operands)
-   {}
+       : Instruction(type, operands)
+   {
+   }
 };
 
 class JmpInstruction : public Instruction
 {
 public:
    JmpInstruction(OperandList &dest)
-      : Instruction(INST_JMP, dest)
-   {}
+       : Instruction(INST_JMP, dest)
+   {
+   }
 };
 
 // for operations not associated with the binary -- such as processing
@@ -158,8 +184,9 @@ class RecvInstruction : public PseudoInstruction
 {
 public:
    RecvInstruction(SubsecondTime cost)
-      : PseudoInstruction(cost, INST_RECV)
-   {}
+       : PseudoInstruction(cost, INST_RECV)
+   {
+   }
 };
 
 // wake up after synchronization
@@ -167,7 +194,8 @@ public:
 class SyncInstruction : public PseudoInstruction
 {
 public:
-   enum sync_type_t {
+   enum sync_type_t
+   {
       FUTEX,
       PTHREAD_MUTEX,
       PTHREAD_COND,
@@ -213,11 +241,12 @@ public:
 class TLBMissInstruction : public PseudoInstruction
 {
    bool m_is_ifetch;
+
 public:
    TLBMissInstruction(SubsecondTime cost, bool is_ifetch)
-      : PseudoInstruction(cost, INST_TLB_MISS)
-      , m_is_ifetch(is_ifetch)
-   {}
+       : PseudoInstruction(cost, INST_TLB_MISS), m_is_ifetch(is_ifetch)
+   {
+   }
    bool isIfetch() const { return m_is_ifetch; }
 };
 
@@ -227,13 +256,12 @@ private:
    IntPtr m_address;
    UInt32 m_data_size;
    bool m_is_fence;
+
 public:
    MemAccessInstruction(SubsecondTime cost, IntPtr address, UInt32 data_size, bool is_fence)
-      : PseudoInstruction(cost, INST_MEM_ACCESS)
-      , m_address(address)
-      , m_data_size(data_size)
-      , m_is_fence(is_fence)
-   {}
+       : PseudoInstruction(cost, INST_MEM_ACCESS), m_address(address), m_data_size(data_size), m_is_fence(is_fence)
+   {
+   }
    IntPtr getDataAddress() const { return m_address; }
    UInt32 getDataSize() const { return m_data_size; }
    bool isFence() const { return m_is_fence; }
@@ -242,15 +270,17 @@ public:
 class DelayInstruction : public PseudoInstruction
 {
 public:
-   enum delay_type_t {
+   enum delay_type_t
+   {
       DVFS_TRANSITION,
       NUM_TYPES
    };
    DelayInstruction(SubsecondTime cost, delay_type_t delay_type)
-      : PseudoInstruction(cost, INST_DELAY)
-      , m_delay_type(delay_type)
-   { }
+       : PseudoInstruction(cost, INST_DELAY), m_delay_type(delay_type)
+   {
+   }
    delay_type_t getDelayType() const { return m_delay_type; }
+
 private:
    delay_type_t m_delay_type;
 };
@@ -259,8 +289,9 @@ class UnknownInstruction : public PseudoInstruction
 {
 public:
    UnknownInstruction(SubsecondTime cost)
-      : PseudoInstruction(cost, INST_UNKNOWN)
-   { }
+       : PseudoInstruction(cost, INST_UNKNOWN)
+   {
+   }
 };
 
 #endif

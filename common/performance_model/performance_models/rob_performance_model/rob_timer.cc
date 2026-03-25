@@ -36,7 +36,7 @@ RobTimer::RobTimer(
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/issue_contention", core->getId())
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ? core_model->createRobContentionModel(core)
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       : NULL),
-      now(core->getDvfsDomain()), frontend_stalled_until(SubsecondTime::Zero()), in_icache_miss(false), last_store_done(SubsecondTime::Zero()), load_queue("rob_timer.load_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_loads", core->getId())), store_queue("rob_timer.store_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_stores", core->getId())), nextSequenceNumber(0), will_skip(false), time_skipped(SubsecondTime::Zero()), registerDependencies(new RegisterDependencies()), memoryDependencies(new MemoryDependencies()), perf(_perf), m_cpiCurrentFrontEndStall(NULL), m_mlp_histogram(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/mlp_histogram", core->getId())), m_dipMap()
+      now(core->getDvfsDomain()), frontend_stalled_until(SubsecondTime::Zero()), in_icache_miss(false), last_store_done(SubsecondTime::Zero()), load_queue("rob_timer.load_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_loads", core->getId())), store_queue("rob_timer.store_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_stores", core->getId())), nextSequenceNumber(0), will_skip(false), time_skipped(SubsecondTime::Zero()), registerDependencies(new RegisterDependencies()), memoryDependencies(new MemoryDependencies()), perf(_perf), m_cpiCurrentFrontEndStall(NULL), m_mlp_histogram(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/mlp_histogram", core->getId())), m_DMap(), m_CMap()
 {
 
    registerStatsMetric("rob_timer", core->getId(), "time_skipped", &time_skipped);
@@ -436,7 +436,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
 
    if (frontend_stalled_until <= now)
    {
-      m_dipMap.clear();
+      m_DMap.clear();
 
       bool be_stall = !(m_num_in_rob < windowSize);
 
@@ -456,7 +456,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          LOG_ASSERT_ERROR(m_num_in_rob < rob.size(), "Expected sufficient uops for dispatching in pre-ROB buffer, but didn't find them");
          RobEntry *entry = &rob.at(m_num_in_rob);
          DynamicMicroOp &uop = *entry->uop;
-         DipStack *curr_dip_stack;
+         PICS_d *curr_dip_stack;
 
          if (!uop.getMicroOp()->getInstruction())
          {
@@ -464,7 +464,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          }
 
          if (account_dip)
-            curr_dip_stack = uop.getMicroOp()->getInstruction()->getDipStack();
+            curr_dip_stack = uop.getMicroOp()->getInstruction()->getPICS_d();
 
          // Dispatch up to 4 instructions
          if (uops_dispatched == dispatchWidth)
@@ -496,7 +496,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
                frontend_stalled_until = now + uop.getICacheLatency();
                in_icache_miss = true;
 
-               m_dipMap.insert({DIPComponent::FRONT_END, entry});
+               m_DMap.insert({DComponent::FRONT_END, entry});
                // Don't dispatch this instruction yet
                cpiFrontEnd = &m_cpiInstructionCache[uop.getICacheHitWhere()];
                break;
@@ -538,7 +538,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
          {
             frontend_stalled_until = SubsecondTime::MaxTime();
 
-            m_dipMap.insert({DIPComponent::MISPRED, entry});
+            m_DMap.insert({DComponent::MISPRED, entry});
 #ifdef DEBUG_PERCYCLE
             std::cout << "-- branch mispredict" << std::endl;
 #endif
@@ -550,7 +550,7 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
       m_cpiCurrentFrontEndStall = cpiFrontEnd;
       if (be_stall)
       {
-         m_dipMap.insert({DIPComponent::BACK_END, &rob.at(m_num_in_rob)});
+         m_DMap.insert({DComponent::BACK_END, &rob.at(m_num_in_rob)});
       }
    }
    else
@@ -584,9 +584,9 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
       *cpiComponent = &m_cpiBase;
    }
 
-   // account for the base dispatch slots that are unaccounted for. If m_dipMap is not empty, the uop in the map will
+   // account for the base dispatch slots that are unaccounted for. If m_DMap is not empty, the uop in the map will
    // get the latency for these dispatch slots
-   for (auto entry = m_dipMap.begin(); entry != m_dipMap.end(); ++entry)
+   for (auto entry = m_DMap.begin(); entry != m_DMap.end(); ++entry)
    {
       if (!entry->second->uop->getMicroOp()->getInstruction())
       {
@@ -595,18 +595,18 @@ SubsecondTime RobTimer::doDispatch(SubsecondTime **cpiComponent)
       // calculate number of base slots that are unaccounted for
       SubsecondTime base_latency = (static_cast<float>(dispatchWidth - uops_dispatched) / static_cast<float>(dispatchWidth)) * now.getPeriod();
 
-      DipStack *dip = entry->second->uop->getMicroOp()->getInstruction()->getDipStack();
+      PICS_d *dip = entry->second->uop->getMicroOp()->getInstruction()->getPICS_d();
       switch (entry->first)
       {
-      case (DIPComponent::FRONT_END):
+      case (DComponent::FRONT_END):
          dip->add_fe_stall(base_latency);
          break;
 
-      case (DIPComponent::BACK_END):
+      case (DComponent::BACK_END):
          dip->add_be_stall(base_latency);
          break;
 
-      case (DIPComponent::MISPRED):
+      case (DComponent::MISPRED):
          dip->add_mispred(base_latency);
          break;
       }
@@ -881,9 +881,14 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
 {
    uint64_t num_committed = 0;
 
-   while (rob.size() && (rob.front().done <= now))
+   bool stalled = !(rob.front().done <= now);
+
+   m_CMap.clear();
+
+   while (rob.size() && !stalled)
    {
       RobEntry *entry = &rob.front();
+      PICS_c *curr_pics = entry->uop->getMicroOp()->getInstruction()->getPICS_c();
 
 #ifdef DEBUG_PERCYCLE
       std::cout << "COMMIT   " << entry->uop->getMicroOp()->toShortString() << std::endl;
@@ -900,6 +905,9 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
       if (entry->uop->isLast())
          instructionsExecuted++;
 
+
+      curr_pics->add_compute(now.getPeriod() / commitWidth);
+      
       entry->free();
       rob.pop();
       m_num_in_rob--;
@@ -908,16 +916,32 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
       LOG_ASSERT_ERROR(will_skip == false, "Cycle would have been skipped but stuff happened");
 #endif
 
+      stalled = !(rob.front().done <= now);
+
       // attribute compute cycles
       ++num_committed;
       if (num_committed == commitWidth)
+      {
+
+         stalled = false;
          break;
+
+      }
    }
 
+
    if (rob.size())
-      // if we didnt commit commitWidth, but there are still instructions, we have a stall
+   {
+      if (stalled)
+         m_CMap.insert({CComponent::STALLED, &rob.front()});
+
       return rob.front().done;
+   }
    else
+   {
+      m_CMap.insert({CComponent::DRAINED, &rob.})
+      return SubsecondTime::MaxTime();
+   }
       // front end stalled, because ROB is empty.
       // we know wich instruction this is from the preROB. All the cycles that the ROB is empty needs to go to this guy
       return SubsecondTime::MaxTime();
@@ -999,29 +1023,28 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
    LOG_ASSERT_ERROR(cpiComponent != NULL, "We expected cpiComponent to be set by doDispatch, but it wasn't");
    *cpiComponent += latency;
 
-   for (auto entry = m_dipMap.begin(); entry != m_dipMap.end(); ++entry)
+   for (auto entry = m_DMap.begin(); entry != m_DMap.end(); ++entry)
    {
       if (!entry->second->uop->getMicroOp()->getInstruction())
       {
          continue;
       }
-      DipStack* dip = entry->second->uop->getMicroOp()->getInstruction()->getDipStack();
+      PICS_d *dip = entry->second->uop->getMicroOp()->getInstruction()->getPICS_d();
       switch (entry->first)
       {
-         case (DIPComponent::FRONT_END):
-            dip->add_fe_stall(latency - now.getPeriod());
-            break;
+      case (DComponent::FRONT_END):
+         dip->add_fe_stall(latency - now.getPeriod());
+         break;
 
-         case (DIPComponent::BACK_END):
-            dip->add_be_stall(latency - now.getPeriod());
-            break;
+      case (DComponent::BACK_END):
+         dip->add_be_stall(latency - now.getPeriod());
+         break;
 
-         case (DIPComponent::MISPRED):
-            dip->add_mispred(latency - now.getPeriod());
-            break;
+      case (DComponent::MISPRED):
+         dip->add_mispred(latency - now.getPeriod());
+         break;
       }
    }
-
 }
 
 void RobTimer::countOutstandingMemop(SubsecondTime time)
