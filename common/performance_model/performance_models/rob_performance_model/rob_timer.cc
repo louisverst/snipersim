@@ -907,7 +907,7 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
 
 
       curr_pics->add_compute(now.getPeriod() / commitWidth);
-      
+
       entry->free();
       rob.pop();
       m_num_in_rob--;

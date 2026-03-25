@@ -28,17 +28,18 @@ const char *db_create_stmts[] = {
     "CREATE INDEX `idx_prefix_name` ON `prefixes`(`prefixname`);",
     "CREATE INDEX `idx_value_prefix` ON `values`(`prefixid`);",
 
-    // PICS
-    "CREATE TABLE `dip` (addr TEXT, instr_type TEXT, base REAL, fe_stall REAL, be_stall REAL, mispred REAL);",
-
-    // Other users
-    "CREATE TABLE `topology` (componentname TEXT, coreid INTEGER, masterid INTEGER);",
-    "CREATE TABLE `event` (event INTEGER, time INTEGER, core INTEGER, thread INTEGER, value0 INTEGER, value1 INTEGER, description TEXT);",
+   // PICS
+   "CREATE TABLE `pics_d` (addr TEXT, instr_type TEXT, base REAL, fe_stall REAL, be_stall REAL, mispred REAL);",
+   "CREATE TABLE `pics_c` (addr TEXT, instr_type TEXT, compute REAL, drained REAL, stalled REAL, flushed REAL);",
+   // Other users
+   "CREATE TABLE `topology` (componentname TEXT, coreid INTEGER, masterid INTEGER);",
+   "CREATE TABLE `event` (event INTEGER, time INTEGER, core INTEGER, thread INTEGER, value0 INTEGER, value1 INTEGER, description TEXT);",
 };
 const char db_insert_stmt_name[] = "INSERT INTO `names` (nameid, objectname, metricname) VALUES (?, ?, ?);";
 const char db_insert_stmt_prefix[] = "INSERT INTO `prefixes` (prefixid, prefixname) VALUES (?, ?);";
 const char db_insert_stmt_value[] = "INSERT INTO `values` (prefixid, nameid, core, value) VALUES (?, ?, ?, ?);";
-const char db_insert_stmt_dip[] = "INSERT INTO `dip` (addr, instr_type, base, fe_stall, be_stall, mispred) VALUES (?, ?, ?, ?, ?, ?);";
+const char db_insert_stmt_picsd[] = "INSERT INTO `pics_d` (addr, instr_type, base, fe_stall, be_stall, mispred) VALUES (?, ?, ?, ?, ?, ?);";
+const char db_insert_stmt_picsc[] = "INSERT INTO `pics_c` (addr, instr_type, compute, drained, stalled, flushed) VALUES (?, ?, ?, ?, ?, ?);";
 
 UInt64 getWallclockTimeCallback(String objectName, UInt32 index, String metricName, UInt64 arg)
 {
@@ -68,7 +69,8 @@ StatsManager::~StatsManager()
       sqlite3_finalize(m_stmt_insert_name);
       sqlite3_finalize(m_stmt_insert_prefix);
       sqlite3_finalize(m_stmt_insert_value);
-      sqlite3_finalize(m_stmt_insert_dip);
+      sqlite3_finalize(m_stmt_insert_picsd);
+      sqlite3_finalize(m_stmt_insert_picsc);
       sqlite3_close(m_db);
    }
 }
@@ -96,7 +98,7 @@ void StatsManager::init()
    sqlite3_prepare(m_db, db_insert_stmt_name, -1, &m_stmt_insert_name, NULL);
    sqlite3_prepare(m_db, db_insert_stmt_prefix, -1, &m_stmt_insert_prefix, NULL);
    sqlite3_prepare(m_db, db_insert_stmt_value, -1, &m_stmt_insert_value, NULL);
-   sqlite3_prepare(m_db, db_insert_stmt_dip, -1, &m_stmt_insert_dip, NULL);
+   sqlite3_prepare(m_db, db_insert_stmt_dip, -1, &m_stmt_insert_picsd, NULL);
 
    sqlite3_exec(m_db, "BEGIN TRANSACTION", NULL, NULL, NULL);
    for (StatsObjectList::iterator it1 = m_objects.begin(); it1 != m_objects.end(); ++it1)
@@ -285,22 +287,44 @@ void StatHist::print()
    printf(")\n");
 }
 
-void StatsManager::recordDip(unsigned long address, const char *instr_type, PICS_d *stack)
+void
+StatsManager::recordPicsD(unsigned long address, const char* instr_type, PICS_d* stack)
 {
    int res;
 
    std::stringstream stream;
    stream << "0x" << std::hex << address;
 
-   sqlite3_reset(m_stmt_insert_dip);
-   sqlite3_clear_bindings(m_stmt_insert_dip);
-   sqlite3_bind_text(m_stmt_insert_dip, 1, stream.str().c_str(), -1, SQLITE_TRANSIENT);
-   sqlite3_bind_text(m_stmt_insert_dip, 2, instr_type, -1, SQLITE_TRANSIENT);
-   sqlite3_bind_double(m_stmt_insert_dip, 3, std::round(stack->get_base_cyc() * 100.0) / 100.0);
-   sqlite3_bind_double(m_stmt_insert_dip, 4, std::round(stack->get_fe_stall_cyc() * 100.0) / 100.0);
-   sqlite3_bind_double(m_stmt_insert_dip, 5, std::round(stack->get_be_stall_cyc() * 100.0) / 100.0);
-   sqlite3_bind_double(m_stmt_insert_dip, 6, std::round(stack->get_mispred_cyc() * 100.0) / 100.0);
+   sqlite3_reset(m_stmt_insert_picsd);
+   sqlite3_clear_bindings(m_stmt_insert_picsd);
+   sqlite3_bind_text(m_stmt_insert_picsd, 1, stream.str().c_str(), -1, SQLITE_TRANSIENT);
+   sqlite3_bind_text(m_stmt_insert_picsd, 2, instr_type, -1, SQLITE_TRANSIENT);
+   sqlite3_bind_double(m_stmt_insert_picsd, 3, std::round(stack->get_base_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_picsd, 4, std::round(stack->get_fe_stall_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_picsd, 5, std::round(stack->get_be_stall_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_picsd, 6, std::round(stack->get_mispred_cyc() * 100.0) / 100.0);
 
-   res = sqlite3_step(m_stmt_insert_dip);
+   res = sqlite3_step(m_stmt_insert_picsd);
+   LOG_ASSERT_ERROR(res == SQLITE_DONE, "Error executing SQL statement: %s", sqlite3_errmsg(m_db));
+}
+
+void
+StatsManager::recordPicsC(unsigned long address, const char* instr_type, PICS_c* stack)
+{
+   int res;
+
+   std::stringstream stream;
+   stream << "0x" << std::hex << address;
+
+   sqlite3_reset(m_stmt_insert_picsc);
+   sqlite3_clear_bindings(m_stmt_insert_picsc);
+   sqlite3_bind_text(m_stmt_insert_picsc, 1, stream.str().c_str(), -1, SQLITE_TRANSIENT);
+   sqlite3_bind_text(m_stmt_insert_picsc, 2, instr_type, -1, SQLITE_TRANSIENT);
+   sqlite3_bind_double(m_stmt_insert_picsc, 3, std::round(stack->get_compute_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_picsc, 4, std::round(stack->get_drained_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_picsc, 5, std::round(stack->get_stalled_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_picsc, 6, std::round(stack->get_flushed_cyc() * 100.0) / 100.0);
+
+   res = sqlite3_step(m_stmt_insert_picsc);
    LOG_ASSERT_ERROR(res == SQLITE_DONE, "Error executing SQL statement: %s", sqlite3_errmsg(m_db));
 }
