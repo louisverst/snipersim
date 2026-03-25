@@ -390,7 +390,6 @@ boost::tuple<uint64_t, SubsecondTime> RobTimer::simulate(const std::vector<Dynam
 #endif
 #endif
    }
-
    return boost::tuple<uint64_t, SubsecondTime>(totalInsnExec, totalLat);
 }
 

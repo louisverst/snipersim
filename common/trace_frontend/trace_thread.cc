@@ -672,9 +672,8 @@ void TraceThread::handleInstructionDetailed(Sift::Instruction &inst, Sift::Instr
    // Push instruction
 
    prfmdl->queueInstruction(dynins);
-
+   
    // simulate
-
    prfmdl->iterate();
 }
 
