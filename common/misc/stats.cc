@@ -98,7 +98,8 @@ void StatsManager::init()
    sqlite3_prepare(m_db, db_insert_stmt_name, -1, &m_stmt_insert_name, NULL);
    sqlite3_prepare(m_db, db_insert_stmt_prefix, -1, &m_stmt_insert_prefix, NULL);
    sqlite3_prepare(m_db, db_insert_stmt_value, -1, &m_stmt_insert_value, NULL);
-   sqlite3_prepare(m_db, db_insert_stmt_dip, -1, &m_stmt_insert_picsd, NULL);
+   sqlite3_prepare(m_db, db_insert_stmt_picsd, -1, &m_stmt_insert_picsd, NULL);
+   sqlite3_prepare(m_db, db_insert_stmt_picsc, -1, &m_stmt_insert_picsc, NULL);
 
    sqlite3_exec(m_db, "BEGIN TRANSACTION", NULL, NULL, NULL);
    for (StatsObjectList::iterator it1 = m_objects.begin(); it1 != m_objects.end(); ++it1)
@@ -320,10 +321,10 @@ StatsManager::recordPicsC(unsigned long address, const char* instr_type, PICS_c*
    sqlite3_clear_bindings(m_stmt_insert_picsc);
    sqlite3_bind_text(m_stmt_insert_picsc, 1, stream.str().c_str(), -1, SQLITE_TRANSIENT);
    sqlite3_bind_text(m_stmt_insert_picsc, 2, instr_type, -1, SQLITE_TRANSIENT);
-   sqlite3_bind_double(m_stmt_insert_picsc, 3, std::round(stack->get_compute_cyc() * 100.0) / 100.0);
-   sqlite3_bind_double(m_stmt_insert_picsc, 4, std::round(stack->get_drained_cyc() * 100.0) / 100.0);
-   sqlite3_bind_double(m_stmt_insert_picsc, 5, std::round(stack->get_stalled_cyc() * 100.0) / 100.0);
-   sqlite3_bind_double(m_stmt_insert_picsc, 6, std::round(stack->get_flushed_cyc() * 100.0) / 100.0);
+   sqlite3_bind_double(m_stmt_insert_picsc, 3, std::round(stack->get_compute_cyc() * 10000000.0) / 10000000.0);
+   sqlite3_bind_double(m_stmt_insert_picsc, 4, std::round(stack->get_drained_cyc() * 10000000.0) / 10000000.0);
+   sqlite3_bind_double(m_stmt_insert_picsc, 5, std::round(stack->get_stalled_cyc() * 10000000.0) / 10000000.0);
+   sqlite3_bind_double(m_stmt_insert_picsc, 6, std::round(stack->get_flushed_cyc() * 10000000.0) / 10000000.0);
 
    res = sqlite3_step(m_stmt_insert_picsc);
    LOG_ASSERT_ERROR(res == SQLITE_DONE, "Error executing SQL statement: %s", sqlite3_errmsg(m_db));

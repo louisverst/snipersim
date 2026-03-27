@@ -880,6 +880,7 @@ SubsecondTime RobTimer::doIssue()
 SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
 {
    uint64_t num_committed = 0;
+   bool account_pics = false;
 
    bool stalled = !(rob.front().done <= now);
 
@@ -888,7 +889,13 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
    while (rob.size() && !stalled)
    {
       RobEntry *entry = &rob.front();
-      PICS_c *curr_pics = entry->uop->getMicroOp()->getInstruction()->getPICS_c();
+      PICS_c *curr_pics;
+
+      if (entry->uop->getMicroOp()->getInstruction())
+         account_pics = true;
+
+      if (account_pics)
+         curr_pics = entry->uop->getMicroOp()->getInstruction()->getPICS_c();
 
 #ifdef DEBUG_PERCYCLE
       std::cout << "COMMIT   " << entry->uop->getMicroOp()->toShortString() << std::endl;
@@ -905,8 +912,8 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
       if (entry->uop->isLast())
          instructionsExecuted++;
 
-
-      curr_pics->add_compute(now.getPeriod() / commitWidth);
+      if (account_pics)
+         curr_pics->add_compute(now.getPeriod() / commitWidth);
 
       entry->free();
       rob.pop();
@@ -922,13 +929,10 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
       ++num_committed;
       if (num_committed == commitWidth)
       {
-
          stalled = false;
          break;
-
       }
    }
-
 
    if (rob.size())
    {
@@ -939,12 +943,11 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
    }
    else
    {
-      m_CMap.insert({CComponent::DRAINED, &rob.})
       return SubsecondTime::MaxTime();
    }
-      // front end stalled, because ROB is empty.
-      // we know wich instruction this is from the preROB. All the cycles that the ROB is empty needs to go to this guy
-      return SubsecondTime::MaxTime();
+   // front end stalled, because ROB is empty.
+   // we know wich instruction this is from the preROB. All the cycles that the ROB is empty needs to go to this guy
+   return SubsecondTime::MaxTime();
 }
 
 void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
@@ -970,6 +973,8 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
 
    // Model dispatch, issue and commit stages
    // Decode stage is not modeled, assumes the decoders can keep up with (up to) dispatchWidth uops per cycle
+
+   printRob();
 
    SubsecondTime next_dispatch = doDispatch(&cpiComponent);
    SubsecondTime next_issue = doIssue();
