@@ -886,7 +886,7 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
 
    m_CMap.clear();
 
-   while (rob.size() && !stalled)
+   while (rob.size() && !stalled) // Why rob.size() , this counts also for prerob?
    {
       RobEntry *entry = &rob.front();
       PICS_c *curr_pics;

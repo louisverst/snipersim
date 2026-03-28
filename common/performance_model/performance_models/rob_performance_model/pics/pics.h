@@ -1,31 +1,50 @@
 #ifndef PICS_H_
 #define PICS_H_
-
 #include "subsecond_time.h"
 #include "simulator.h"
 #include "dvfs_manager.h"
 
-class PICS_d
+//#define DEBUG_PICS
+
+class PICS_base
 {
-private:
-    SubsecondTime base{SubsecondTime::Zero()};
-    SubsecondTime fe_stall{SubsecondTime::Zero()};
-    SubsecondTime be_stall{SubsecondTime::Zero()};
-    SubsecondTime mispred{SubsecondTime::Zero()};
+protected:
+    static float to_cycles(SubsecondTime t)
+    {
+        return static_cast<float>(t.getFS()) /
+               static_cast<float>(Sim()->getDvfsManager()->getGlobalDomain()->getPeriod().getFS());
+    }
 
-public:
-    void add_base(SubsecondTime t);
-    void add_fe_stall(SubsecondTime t);
-    void add_be_stall(SubsecondTime t);
-    void add_mispred(SubsecondTime t);
-
-    float get_base_cyc() const;
-    float get_fe_stall_cyc() const;
-    float get_be_stall_cyc() const;
-    float get_mispred_cyc() const;
+    static void add_time(SubsecondTime& member, SubsecondTime t, const char* label)
+    {
+#ifdef DEBUG_PICS
+        std::cout << "Adding " << label << ": " << to_cycles(t) << "\n";
+#endif
+        member += t;
+    }
 };
 
-class PICS_c
+class PICS_d : private PICS_base
+{
+private:
+    SubsecondTime base {SubsecondTime::Zero()};
+    SubsecondTime fe_stall{SubsecondTime::Zero()};
+    SubsecondTime be_stall{SubsecondTime::Zero()};
+    SubsecondTime mispred {SubsecondTime::Zero()};
+
+public:
+    void add_base(SubsecondTime t) { add_time(base, t, "base"); }
+    void add_fe_stall(SubsecondTime t) { add_time(fe_stall, t, "fe_stall"); }
+    void add_be_stall(SubsecondTime t) { add_time(be_stall, t, "be_stall"); }
+    void add_mispred(SubsecondTime t) { add_time(mispred, t, "mispred"); }
+
+    float get_base_cyc() const { return to_cycles(base); }
+    float get_fe_stall_cyc() const { return to_cycles(fe_stall); }
+    float get_be_stall_cyc() const { return to_cycles(be_stall); }
+    float get_mispred_cyc() const { return to_cycles(mispred); }
+};
+
+class PICS_c : private PICS_base
 {
 private:
     SubsecondTime compute{SubsecondTime::Zero()};
@@ -34,15 +53,15 @@ private:
     SubsecondTime flushed{SubsecondTime::Zero()};
 
 public:
-    void add_compute(SubsecondTime t);
-    void add_drained(SubsecondTime t);
-    void add_stalled(SubsecondTime t);
-    void add_flushed(SubsecondTime t);
+    void add_compute(SubsecondTime t) { add_time(compute, t, "compute"); }
+    void add_drained(SubsecondTime t) { add_time(drained, t, "drained"); }
+    void add_stalled(SubsecondTime t) { add_time(stalled, t, "stalled"); }
+    void add_flushed(SubsecondTime t) { add_time(flushed, t, "flushed"); }
 
-    float get_compute_cyc() const;
-    float get_drained_cyc() const;
-    float get_stalled_cyc() const;
-    float get_flushed_cyc() const;
+    float get_compute_cyc() const { return to_cycles(compute); }
+    float get_drained_cyc() const { return to_cycles(drained); }
+    float get_stalled_cyc() const { return to_cycles(stalled); }
+    float get_flushed_cyc() const { return to_cycles(flushed); }
 };
 
 #endif
