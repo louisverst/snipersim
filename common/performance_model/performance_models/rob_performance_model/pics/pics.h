@@ -4,7 +4,7 @@
 #include "simulator.h"
 #include "dvfs_manager.h"
 
-#define DEBUG_PICS
+// #define DEBUG_PICS
 
 class PICS_base
 {

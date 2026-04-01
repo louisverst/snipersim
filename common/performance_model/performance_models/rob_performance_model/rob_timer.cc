@@ -1042,8 +1042,6 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
    // Model dispatch, issue and commit stages
    // Decode stage is not modeled, assumes the decoders can keep up with (up to) dispatchWidth uops per cycle
 
-   printRob();
-
    SubsecondTime next_dispatch = doDispatch(&cpiComponent);
    SubsecondTime next_issue = doIssue();
    SubsecondTime next_commit = doCommit(instructionsExecuted);
