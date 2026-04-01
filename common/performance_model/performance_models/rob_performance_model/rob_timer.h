@@ -132,7 +132,8 @@ private:
    PerformanceModel *perf;
 
    std::map<DComponent, RobEntry *> m_DMap;
-   std::map<CComponent, RobEntry *> m_CMap;
+   std::map<CComponent, PICS_c *> m_CMap;
+
 
 #if DEBUG_IT_INSN_PRINT
        FILE *m_insn_log;

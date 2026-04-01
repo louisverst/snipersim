@@ -30,13 +30,33 @@ RobTimer::RobTimer(
     int misprediction_penalty,
     int dispatch_width,
     int window_size)
-    : dispatchWidth(dispatch_width), commitWidth(Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/commit_width", core->getId())), windowSize(window_size) // windowSize = ROB length = 96 for Core2
-      ,
-      rsEntries(Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/rs_entries", core->getId())), misprediction_penalty(misprediction_penalty), m_store_to_load_forwarding(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/store_to_load_forwarding", core->getId())), m_no_address_disambiguation(!Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/address_disambiguation", core->getId())), inorder(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/in_order", core->getId())), m_core(core), rob(window_size + 255), m_num_in_rob(0), m_rs_entries_used(0), m_rob_contention(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/issue_contention", core->getId())
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ? core_model->createRobContentionModel(core)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      : NULL),
-      now(core->getDvfsDomain()), frontend_stalled_until(SubsecondTime::Zero()), in_icache_miss(false), last_store_done(SubsecondTime::Zero()), load_queue("rob_timer.load_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_loads", core->getId())), store_queue("rob_timer.store_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_stores", core->getId())), nextSequenceNumber(0), will_skip(false), time_skipped(SubsecondTime::Zero()), registerDependencies(new RegisterDependencies()), memoryDependencies(new MemoryDependencies()), perf(_perf), m_cpiCurrentFrontEndStall(NULL), m_mlp_histogram(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/mlp_histogram", core->getId())), m_DMap(), m_CMap()
+    : dispatchWidth(dispatch_width),
+      commitWidth(Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/commit_width", core->getId())),
+      windowSize(window_size), // windowSize = ROB length = 96 for Core2
+      rsEntries(Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/rs_entries", core->getId())),
+      misprediction_penalty(misprediction_penalty),
+      m_store_to_load_forwarding(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/store_to_load_forwarding", core->getId())),
+      m_no_address_disambiguation(!Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/address_disambiguation", core->getId())),
+      inorder(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/in_order", core->getId())),
+      m_core(core),
+      rob(window_size + 255),
+      m_num_in_rob(0),
+      m_rs_entries_used(0),
+      m_rob_contention(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/issue_contention", core->getId()) ? core_model->createRobContentionModel(core): NULL),
+      now(core->getDvfsDomain()),
+      frontend_stalled_until(SubsecondTime::Zero()),
+      in_icache_miss(false),
+      last_store_done(SubsecondTime::Zero()),
+      load_queue("rob_timer.load_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_loads", core->getId())),
+      store_queue("rob_timer.store_queue", core->getId(), Sim()->getCfg()->getIntArray("perf_model/core/rob_timer/outstanding_stores", core->getId())),
+      nextSequenceNumber(0), will_skip(false),
+      time_skipped(SubsecondTime::Zero()),
+      registerDependencies(new RegisterDependencies()),
+      memoryDependencies(new MemoryDependencies()),
+      perf(_perf), m_cpiCurrentFrontEndStall(NULL),
+      m_mlp_histogram(Sim()->getCfg()->getBoolArray("perf_model/core/rob_timer/mlp_histogram", core->getId())),
+      m_DMap{},
+      m_CMap{}
 {
 
    registerStatsMetric("rob_timer", core->getId(), "time_skipped", &time_skipped);
@@ -880,22 +900,33 @@ SubsecondTime RobTimer::doIssue()
 SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
 {
    uint64_t num_committed = 0;
-   bool account_pics = false;
 
-   bool stalled = !(rob.front().done <= now);
+   PICS_c *curr_pics;
 
-   m_CMap.clear();
+    if (rob.front().uop->getMicroOp()->getInstruction())
+        curr_pics = rob.front().uop->getMicroOp()->getInstruction()->getPICS_c();
 
-   while (rob.size() && !stalled) // Why rob.size() , this counts also for prerob?
+    else
+        curr_pics = nullptr;
+
+
+   bool stalled = !(rob.front().done <= now) && (m_num_in_rob > 0);
+   bool flushed = false;
+   if (m_CMap.contains(CComponent::FLUSHED))
+      flushed = true;
+
+   while (rob.size() && rob.front().done <= now)
    {
       RobEntry *entry = &rob.front();
-      PICS_c *curr_pics;
+      DynamicMicroOp &uop = *entry->uop;
 
-      if (entry->uop->getMicroOp()->getInstruction())
-         account_pics = true;
+      m_CMap.clear();
 
-      if (account_pics)
-         curr_pics = entry->uop->getMicroOp()->getInstruction()->getPICS_c();
+      if (uop.getMicroOp()->getInstruction())
+         curr_pics = uop.getMicroOp()->getInstruction()->getPICS_c();
+
+      else
+         curr_pics = nullptr;
 
 #ifdef DEBUG_PERCYCLE
       std::cout << "COMMIT   " << entry->uop->getMicroOp()->toShortString() << std::endl;
@@ -912,8 +943,15 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
       if (entry->uop->isLast())
          instructionsExecuted++;
 
-      if (account_pics)
+      if (curr_pics)
+      {
          curr_pics->add_compute(now.getPeriod() / commitWidth);
+
+         if (flushed = uop.getMicroOp()->isBranch() && uop.isBranchMispredicted())
+         {
+            m_CMap.insert({CComponent::FLUSHED, curr_pics});
+         }
+      }
 
       entry->free();
       rob.pop();
@@ -923,28 +961,58 @@ SubsecondTime RobTimer::doCommit(uint64_t &instructionsExecuted)
       LOG_ASSERT_ERROR(will_skip == false, "Cycle would have been skipped but stuff happened");
 #endif
 
-      stalled = !(rob.front().done <= now);
+      stalled = !(rob.front().done <= now) && (m_num_in_rob > 0);
 
       // attribute compute cycles
       ++num_committed;
       if (num_committed == commitWidth)
       {
-         stalled = false;
          break;
       }
    }
 
    if (rob.size())
    {
-      if (stalled)
-         m_CMap.insert({CComponent::STALLED, &rob.front()});
+        if (curr_pics && stalled)
+        {
+            m_CMap.clear();
+            m_CMap.insert({CComponent::STALLED, curr_pics});
+        }
+        else if (m_num_in_rob <= 0)
+        {
+            if (!flushed)
+            {
+                m_CMap.clear();
+                m_CMap.insert({CComponent::DRAINED, rob.front().uop->getMicroOp()->getInstruction()->getPICS_c()});
+            }
+        }
+   }
 
-      return rob.front().done;
-   }
-   else
+   for (auto it = m_CMap.begin(); it != m_CMap.end(); ++it)
    {
-      return SubsecondTime::MaxTime();
+      PICS_c *pics = it->second;
+      // calculate number of base slots that are unaccounted for
+      SubsecondTime base_latency = (static_cast<float>(commitWidth - num_committed) / static_cast<float>(commitWidth)) * now.getPeriod();
+
+      switch (it->first)
+      {
+      case (CComponent::STALLED):
+         pics->add_stalled(base_latency);
+         break;
+
+      case (CComponent::DRAINED):
+         pics->add_drained(base_latency);
+         break;
+
+      case (CComponent::FLUSHED):
+         pics->add_flushed(base_latency);
+         break;
+      }
    }
+
+
+   if (rob.size())
+      return rob.front().done;
    // front end stalled, because ROB is empty.
    // we know wich instruction this is from the preROB. All the cycles that the ROB is empty needs to go to this guy
    return SubsecondTime::MaxTime();
@@ -1034,6 +1102,7 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
       {
          continue;
       }
+
       PICS_d *dip = entry->second->uop->getMicroOp()->getInstruction()->getPICS_d();
       switch (entry->first)
       {
@@ -1050,6 +1119,26 @@ void RobTimer::execute(uint64_t &instructionsExecuted, SubsecondTime &latency)
          break;
       }
    }
+
+    for (auto it = m_CMap.begin(); it != m_CMap.end(); ++it)
+    {
+        PICS_c *pics = it->second;
+
+        switch (it->first)
+        {
+        case (CComponent::DRAINED):
+            pics->add_drained(latency - now.getPeriod());
+            break;
+
+        case (CComponent::STALLED):
+            pics->add_stalled(latency - now.getPeriod());
+            break;
+
+        case (CComponent::FLUSHED):
+            pics->add_flushed(latency - now.getPeriod());
+            break;
+        }
+    }
 }
 
 void RobTimer::countOutstandingMemop(SubsecondTime time)
