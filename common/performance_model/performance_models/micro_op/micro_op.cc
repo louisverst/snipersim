@@ -27,6 +27,7 @@ MicroOp::MicroOp()
    , destinationRegisterNames(MAXIMUM_NUMBER_OF_DESTINATION_REGISTERS)
 #endif
 {
+
    this->uop_type = UOP_INVALID;
    this->instructionOpcode = dl::Decoder::DL_OPCODE_INVALID;
    this->instruction = NULL;
@@ -72,7 +73,7 @@ MicroOp::MicroOp()
 }
 
 void MicroOp::makeLoad(uint32_t offset, dl::Decoder::decoder_opcode instructionOpcode, const String& instructionOpcodeName, uint16_t mem_size) {
-   this->uop_type = UOP_LOAD;               
+   this->uop_type = UOP_LOAD;
    this->microOpTypeOffset = offset;
    this->memoryAccessSize = mem_size;
 #ifdef ENABLE_MICROOP_STRINGS
@@ -121,7 +122,7 @@ void MicroOp::makeDynamic(const String& instructionOpcodeName, uint32_t execLate
 
 
 MicroOp::uop_subtype_t MicroOp::getSubtype_Exec(const MicroOp& uop)
-{   
+{
    dl::Decoder *dec = Sim()->getDecoder();
 
    // Get the uop subtype for the EXEC part of this instruction

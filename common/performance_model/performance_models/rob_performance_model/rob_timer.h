@@ -8,41 +8,57 @@
 #include "interval_timer.h"
 #include "rob_contention.h"
 #include "stats.h"
-
+#include <map>
 #include <deque>
+
+enum class DComponent
+{
+   BASE,
+   FRONT_END,
+   BACK_END,
+   MISPRED
+};
+
+enum class CComponent
+{
+   COMPUTE,
+   DRAINED,
+   STALLED,
+   FLUSHED
+};
 
 class RobTimer
 {
 private:
    class RobEntry
    {
-      private:
-         static const size_t MAX_INLINE_DEPENDANTS = 8;
-         size_t numInlineDependants;
-         RobEntry* inlineDependants[MAX_INLINE_DEPENDANTS];
-         std::vector<RobEntry*> *vectorDependants;
-         std::vector<uint64_t> addressProducers;
+   private:
+      static const size_t MAX_INLINE_DEPENDANTS = 8;
+      size_t numInlineDependants;
+      RobEntry *inlineDependants[MAX_INLINE_DEPENDANTS];
+      std::vector<RobEntry *> *vectorDependants;
+      std::vector<uint64_t> addressProducers;
 
-      public:
-         void init(DynamicMicroOp *uop, UInt64 sequenceNumber);
-         void free();
+   public:
+      void init(DynamicMicroOp *uop, UInt64 sequenceNumber);
+      void free();
 
-         void addDependant(RobEntry* dep);
-         uint64_t getNumDependants() const;
-         RobEntry* getDependant(size_t idx) const;
+      void addDependant(RobEntry *dep);
+      uint64_t getNumDependants() const;
+      RobEntry *getDependant(size_t idx) const;
 
-         void addAddressProducer(UInt64 sequenceNumber) { addressProducers.push_back(sequenceNumber); }
-         UInt64 getNumAddressProducers() const { return addressProducers.size(); }
-         UInt64 getAddressProducer(size_t idx) const { return addressProducers.at(idx); }
+      void addAddressProducer(UInt64 sequenceNumber) { addressProducers.push_back(sequenceNumber); }
+      UInt64 getNumAddressProducers() const { return addressProducers.size(); }
+      UInt64 getAddressProducer(size_t idx) const { return addressProducers.at(idx); }
 
-         DynamicMicroOp *uop;
-         SubsecondTime dispatched;
-         SubsecondTime ready;    // Once all dependencies are resolved, cycle number that this uop becomes ready for issue
-         SubsecondTime readyMax; // While some but not all dependencies are resolved, keep the time of the latest known resolving dependency
-         SubsecondTime addressReady;
-         SubsecondTime addressReadyMax;
-         SubsecondTime issued;
-         SubsecondTime done;
+      DynamicMicroOp *uop;
+      SubsecondTime dispatched;
+      SubsecondTime ready;    // Once all dependencies are resolved, cycle number that this uop becomes ready for issue
+      SubsecondTime readyMax; // While some but not all dependencies are resolved, keep the time of the latest known resolving dependency
+      SubsecondTime addressReady;
+      SubsecondTime addressReadyMax;
+      SubsecondTime issued;
+      SubsecondTime done;
    };
 
    const uint64_t dispatchWidth;
@@ -53,6 +69,9 @@ private:
    const bool m_store_to_load_forwarding;
    const bool m_no_address_disambiguation;
    const bool inorder;
+
+   SubsecondTime total_base;
+   uint64_t nr_of_uops;
 
    Core *m_core;
 
@@ -73,8 +92,8 @@ private:
    bool will_skip;
    SubsecondTime time_skipped;
 
-   RegisterDependencies* const registerDependencies;
-   MemoryDependencies* const memoryDependencies;
+   RegisterDependencies *const registerDependencies;
+   MemoryDependencies *const memoryDependencies;
 
    int addressMask;
 
@@ -112,8 +131,12 @@ private:
 
    PerformanceModel *perf;
 
+   std::map<DComponent, RobEntry *> m_DMap;
+   std::map<CComponent, PICS_c *> m_CMap;
+
+
 #if DEBUG_IT_INSN_PRINT
-   FILE *m_insn_log;
+       FILE *m_insn_log;
 #endif
 
    uint64_t m_numMfenceInsns;
@@ -132,27 +155,26 @@ private:
 
    const bool m_mlp_histogram;
    static const unsigned int MAX_OUTSTANDING = 32;
-   std::vector<std::vector<SubsecondTime> > m_outstandingLoads;
+   std::vector<std::vector<SubsecondTime>> m_outstandingLoads;
    std::vector<SubsecondTime> m_outstandingLoadsAll;
 
    RobEntry *findEntryBySequenceNumber(UInt64 sequenceNumber);
-   SubsecondTime* findCpiComponent();
+   SubsecondTime *findCpiComponent();
    void countOutstandingMemop(SubsecondTime time);
    void printRob();
 
-   void execute(uint64_t& instructionsExecuted, SubsecondTime& latency);
+   void execute(uint64_t &instructionsExecuted, SubsecondTime &latency);
    SubsecondTime doDispatch(SubsecondTime **cpiComponent);
    SubsecondTime doIssue();
-   SubsecondTime doCommit(uint64_t& instructionsExecuted);
+   SubsecondTime doCommit(uint64_t &instructionsExecuted);
 
    void issueInstruction(uint64_t idx, SubsecondTime &next_event);
 
 public:
-
    RobTimer(Core *core, PerformanceModel *perf, const CoreModel *core_model, int misprediction_penalty, int dispatch_width, int window_size);
    ~RobTimer();
 
-   boost::tuple<uint64_t,SubsecondTime> simulate(const std::vector<DynamicMicroOp*>& insts);
+   boost::tuple<uint64_t, SubsecondTime> simulate(const std::vector<DynamicMicroOp *> &insts);
    void synchronize(SubsecondTime time);
 };
 

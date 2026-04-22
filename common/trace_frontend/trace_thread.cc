@@ -23,31 +23,12 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
-#include <x86_decoder.h>  // TODO remove when the decode function in microop perf model is adapted
+#include <x86_decoder.h> // TODO remove when the decode function in microop perf model is adapted
 
 int TraceThread::m_isa = 0;
 
 TraceThread::TraceThread(Thread *thread, SubsecondTime time_start, String tracefile, String responsefile, app_id_t app_id, bool cleanup)
-   : m__thread(NULL)
-   , m_thread(thread)
-   , m_time_start(time_start)
-   , m_trace(tracefile.c_str(), responsefile.c_str(), thread->getId())
-   , m_trace_has_pa(false)
-   , m_address_randomization(Sim()->getCfg()->getBool("traceinput/address_randomization"))
-   , m_appid_from_coreid(Sim()->getCfg()->getString("scheduler/type") == "sequential" ? true : false)
-   , m_stop(false)
-   , m_bbv_base(0)
-   , m_bbv_count(0)
-   , m_bbv_last(0)
-   , m_bbv_end(false)
-   , m_output_leftover_size(0)
-   , m_tracefile(tracefile)
-   , m_responsefile(responsefile)
-   , m_app_id(app_id)
-   , m_blocked(false)
-   , m_cleanup(cleanup)
-   , m_started(false)
-   , m_stopped(false)
+    : m__thread(NULL), m_thread(thread), m_time_start(time_start), m_trace(tracefile.c_str(), responsefile.c_str(), thread->getId()), m_trace_has_pa(false), m_address_randomization(Sim()->getCfg()->getBool("traceinput/address_randomization")), m_appid_from_coreid(Sim()->getCfg()->getString("scheduler/type") == "sequential" ? true : false), m_stop(false), m_bbv_base(0), m_bbv_count(0), m_bbv_last(0), m_bbv_end(false), m_output_leftover_size(0), m_tracefile(tracefile), m_responsefile(responsefile), m_app_id(app_id), m_blocked(false), m_cleanup(cleanup), m_started(false), m_stopped(false)
 {
 
    m_trace.setHandleInstructionCountFunc(TraceThread::__handleInstructionCountFunc, this);
@@ -70,7 +51,7 @@ TraceThread::TraceThread(Thread *thread, SubsecondTime time_start, String tracef
       // By using the app_id as a random seed, we get an app_id-specific pseudo-random permutation of 0..255
       UInt64 state = rng_seed(app_id);
       m_address_randomization_table[0] = 0;
-      for(unsigned int i = 1; i < 256; ++i)
+      for (unsigned int i = 1; i < 256; ++i)
       {
          uint8_t j = rng_next(state) % (i + 1);
          m_address_randomization_table[i] = m_address_randomization_table[j];
@@ -79,7 +60,6 @@ TraceThread::TraceThread(Thread *thread, SubsecondTime time_start, String tracef
    }
 
    thread->setVa2paFunc(_va2pa, (UInt64)this);
-   
 }
 
 TraceThread::~TraceThread()
@@ -90,7 +70,7 @@ TraceThread::~TraceThread()
       unlink(m_tracefile.c_str());
       unlink(m_responsefile.c_str());
    }
-   for(std::unordered_map<IntPtr, const dl::DecodedInst *>::iterator i = m_decoder_cache.begin() ; i != m_decoder_cache.end() ; ++i)
+   for (std::unordered_map<IntPtr, const dl::DecodedInst *>::iterator i = m_decoder_cache.begin(); i != m_decoder_cache.end(); ++i)
    {
       delete (*i).second;
    }
@@ -109,9 +89,9 @@ UInt64 TraceThread::va2pa(UInt64 va, bool *noMapping)
       {
          if (noMapping)
             *noMapping = true;
-         //else
-         //   LOG_PRINT_WARNING("No mapping found for logical address %lx", va);
-         // Fall through to construct an address with our thread id in the upper bits (assume address is private)
+         // else
+         //    LOG_PRINT_WARNING("No mapping found for logical address %lx", va);
+         //  Fall through to construct an address with our thread id in the upper bits (assume address is private)
       }
    }
 
@@ -122,11 +102,11 @@ UInt64 TraceThread::va2pa(UInt64 va, bool *noMapping)
    // physical address space.
    if (m_appid_from_coreid)
    {
-        haddr = UInt64(m_thread->getCore()->getId());
+      haddr = UInt64(m_thread->getCore()->getId());
    }
    else
    {
-        haddr = UInt64(m_thread->getAppId());
+      haddr = UInt64(m_thread->getAppId());
    }
 
    if (m_address_randomization)
@@ -167,10 +147,11 @@ void TraceThread::handleOutputFunc(uint8_t fd, const uint8_t *data, uint32_t siz
    else
       return;
 
-   while(size)
+   while (size)
    {
-      const uint8_t* ptr = data;
-      while(ptr < data + size && *ptr != '\r' && *ptr != '\n') ++ptr;
+      const uint8_t *ptr = data;
+      while (ptr < data + size && *ptr != '\r' && *ptr != '\n')
+         ++ptr;
       if (ptr == data + size)
       {
          if (size > sizeof(m_output_leftover))
@@ -189,7 +170,8 @@ void TraceThread::handleOutputFunc(uint8_t fd, const uint8_t *data, uint32_t siz
       fwrite(data, ptr - data, 1, fp);
       fprintf(fp, "\n");
 
-      while(ptr < data + size && (*ptr == '\r' || *ptr == '\n')) ++ptr;
+      while (ptr < data + size && (*ptr == '\r' || *ptr == '\n'))
+         ++ptr;
       size -= (ptr - data);
       data = ptr;
    }
@@ -206,25 +188,25 @@ uint64_t TraceThread::handleSyscallFunc(uint16_t syscall_number, const uint8_t *
    LOG_ASSERT_ERROR(m_thread->getCore(), "Cannot execute while not on a core");
    uint64_t ret = 0;
 
-   switch(syscall_number)
+   switch (syscall_number)
    {
-      case SYS_exit_group:
-         Sim()->getTraceManager()->endApplication(this, getCurrentTime());
-         break;
+   case SYS_exit_group:
+      Sim()->getTraceManager()->endApplication(this, getCurrentTime());
+      break;
 
-      default:
+   default:
+   {
+      LOG_ASSERT_ERROR(size == sizeof(SyscallMdl::syscall_args_t), "Syscall arguments not the correct size");
+
+      SyscallMdl::syscall_args_t *args = (SyscallMdl::syscall_args_t *)data;
+
+      m_blocked = m_thread->getSyscallMdl()->runEnter(syscall_number, *args);
+      if (m_blocked == false)
       {
-         LOG_ASSERT_ERROR(size == sizeof(SyscallMdl::syscall_args_t), "Syscall arguments not the correct size");
-
-         SyscallMdl::syscall_args_t *args = (SyscallMdl::syscall_args_t *) data;
-
-         m_blocked = m_thread->getSyscallMdl()->runEnter(syscall_number, *args);
-         if (m_blocked == false)
-         {
-            ret = m_thread->getSyscallMdl()->runExit(ret);
-         }
-         break;
+         ret = m_thread->getSyscallMdl()->runExit(ret);
       }
+      break;
+   }
    }
 
    return ret;
@@ -253,19 +235,19 @@ uint64_t TraceThread::handleMagicFunc(uint64_t a, uint64_t b, uint64_t c)
 
 void TraceThread::handleRoutineChangeFunc(Sift::RoutineOpType event, uint64_t eip, uint64_t esp, uint64_t callEip)
 {
-   switch(event)
+   switch (event)
    {
-      case Sift::RoutineEnter:
-         m_thread->getRoutineTracer()->routineEnter(eip, esp, callEip);
-         break;
-      case Sift::RoutineExit:
-         m_thread->getRoutineTracer()->routineExit(eip, esp);
-         break;
-      case Sift::RoutineAssert:
-         m_thread->getRoutineTracer()->routineAssert(eip, esp);
-         break;
-      default:
-         LOG_PRINT_ERROR("Invalid Sift::RoutineOpType %d", event);
+   case Sift::RoutineEnter:
+      m_thread->getRoutineTracer()->routineEnter(eip, esp, callEip);
+      break;
+   case Sift::RoutineExit:
+      m_thread->getRoutineTracer()->routineExit(eip, esp);
+      break;
+   case Sift::RoutineAssert:
+      m_thread->getRoutineTracer()->routineAssert(eip, esp);
+      break;
+   default:
+      LOG_PRINT_ERROR("Invalid Sift::RoutineOpType %d", event);
    }
 }
 
@@ -279,88 +261,86 @@ bool TraceThread::handleEmuFunc(Sift::EmuType type, Sift::EmuRequest &req, Sift:
 
    LOG_ASSERT_ERROR(m_thread->getCore(), "Cannot execute while not on a core");
 
-   switch(type)
+   switch (type)
    {
-      case Sift::EmuTypeRdtsc:
-      {
-         SubsecondTime cycles_fs = getCurrentTime();
-         // Convert SubsecondTime to cycles in global clock domain
-         const ComponentPeriod *dom_global = Sim()->getDvfsManager()->getGlobalDomain();
-         UInt64 cycles = SubsecondTime::divideRounded(cycles_fs, *dom_global);
+   case Sift::EmuTypeRdtsc:
+   {
+      SubsecondTime cycles_fs = getCurrentTime();
+      // Convert SubsecondTime to cycles in global clock domain
+      const ComponentPeriod *dom_global = Sim()->getDvfsManager()->getGlobalDomain();
+      UInt64 cycles = SubsecondTime::divideRounded(cycles_fs, *dom_global);
 
-         res.rdtsc.cycles = cycles;
-         return true;
-      }
-      case Sift::EmuTypeGetProcInfo:
-      {
-         res.getprocinfo.procid = m_thread->getCore()->getId();
-         res.getprocinfo.nprocs = Sim()->getConfig()->getApplicationCores();
-         res.getprocinfo.emunprocs = Sim()->getConfig()->getOSEmuNprocs() ? Sim()->getConfig()->getOSEmuNprocs() : Sim()->getConfig()->getApplicationCores();
-         return true;
-      }
-      case Sift::EmuTypeGetTime:
-      {
-         res.gettime.time_ns = Sim()->getConfig()->getOSEmuTimeStart() * 1000000000
-                             + getCurrentTime().getNS();
-         return true;
-      }
-      case Sift::EmuTypeCpuid:
-      {
-         cpuid_result_t result;
-         m_thread->getCore()->emulateCpuid(req.cpuid.eax, req.cpuid.ecx, result);
-         res.cpuid.eax = result.eax;
-         res.cpuid.ebx = result.ebx;
-         res.cpuid.ecx = result.ecx;
-         res.cpuid.edx = result.edx;
-         return true;
-      }
-      case Sift::EmuTypeSetThreadInfo:
-      {
-         m_thread->m_os_info.tid = req.setthreadinfo.tid;
-         return true;
-      }
-      case Sift::EmuTypePAPIstart:
-      {
-        m_papi_counters = new long long[NUM_PAPI_COUNTERS];
-        for(unsigned int i = 0; i < NUM_PAPI_COUNTERS; i++)
-          m_papi_counters[i] = 0;
-        return true;
-      }
-      case Sift::EmuTypePAPIread:
-      {
-        m_papi_counters[PAPI_TOT_INS] = m_thread->getCore()->getPerformanceModel()->getInstructionCount();
+      res.rdtsc.cycles = cycles;
+      return true;
+   }
+   case Sift::EmuTypeGetProcInfo:
+   {
+      res.getprocinfo.procid = m_thread->getCore()->getId();
+      res.getprocinfo.nprocs = Sim()->getConfig()->getApplicationCores();
+      res.getprocinfo.emunprocs = Sim()->getConfig()->getOSEmuNprocs() ? Sim()->getConfig()->getOSEmuNprocs() : Sim()->getConfig()->getApplicationCores();
+      return true;
+   }
+   case Sift::EmuTypeGetTime:
+   {
+      res.gettime.time_ns = Sim()->getConfig()->getOSEmuTimeStart() * 1000000000 + getCurrentTime().getNS();
+      return true;
+   }
+   case Sift::EmuTypeCpuid:
+   {
+      cpuid_result_t result;
+      m_thread->getCore()->emulateCpuid(req.cpuid.eax, req.cpuid.ecx, result);
+      res.cpuid.eax = result.eax;
+      res.cpuid.ebx = result.ebx;
+      res.cpuid.ecx = result.ecx;
+      res.cpuid.edx = result.edx;
+      return true;
+   }
+   case Sift::EmuTypeSetThreadInfo:
+   {
+      m_thread->m_os_info.tid = req.setthreadinfo.tid;
+      return true;
+   }
+   case Sift::EmuTypePAPIstart:
+   {
+      m_papi_counters = new long long[NUM_PAPI_COUNTERS];
+      for (unsigned int i = 0; i < NUM_PAPI_COUNTERS; i++)
+         m_papi_counters[i] = 0;
+      return true;
+   }
+   case Sift::EmuTypePAPIread:
+   {
+      m_papi_counters[PAPI_TOT_INS] = m_thread->getCore()->getPerformanceModel()->getInstructionCount();
 
-        SubsecondTime cycles_fs = getCurrentTime();
-        // Convert SubsecondTime to cycles in global clock domain
-        const ComponentPeriod *dom_global = Sim()->getDvfsManager()->getGlobalDomain();
-        UInt64 cycles = SubsecondTime::divideRounded(cycles_fs, *dom_global);
+      SubsecondTime cycles_fs = getCurrentTime();
+      // Convert SubsecondTime to cycles in global clock domain
+      const ComponentPeriod *dom_global = Sim()->getDvfsManager()->getGlobalDomain();
+      UInt64 cycles = SubsecondTime::divideRounded(cycles_fs, *dom_global);
 
-        m_papi_counters[PAPI_TOT_CYC] = cycles;
+      m_papi_counters[PAPI_TOT_CYC] = cycles;
 
-        UInt64 load_misses_l1d = Sim()->getStatsManager()->getMetricObject("L1-D", m_thread->getCore()->getId(), "load-misses")->recordMetric();
-        UInt64 store_misses_l1d= Sim()->getStatsManager()->getMetricObject("L1-D", m_thread->getCore()->getId(), "store-misses")->recordMetric();
+      UInt64 load_misses_l1d = Sim()->getStatsManager()->getMetricObject("L1-D", m_thread->getCore()->getId(), "load-misses")->recordMetric();
+      UInt64 store_misses_l1d = Sim()->getStatsManager()->getMetricObject("L1-D", m_thread->getCore()->getId(), "store-misses")->recordMetric();
 
-        UInt64 load_misses_l2  = Sim()->getStatsManager()->getMetricObject("L2", m_thread->getCore()->getId(), "load-misses")->recordMetric();
-        UInt64 store_misses_l2 = Sim()->getStatsManager()->getMetricObject("L2", m_thread->getCore()->getId(), "store-misses")->recordMetric();
+      UInt64 load_misses_l2 = Sim()->getStatsManager()->getMetricObject("L2", m_thread->getCore()->getId(), "load-misses")->recordMetric();
+      UInt64 store_misses_l2 = Sim()->getStatsManager()->getMetricObject("L2", m_thread->getCore()->getId(), "store-misses")->recordMetric();
 
-        UInt64 load_misses_l3  = Sim()->getStatsManager()->getMetricObject("L3", m_thread->getCore()->getId(), "load-misses")->recordMetric();
-        UInt64 store_misses_l3 = Sim()->getStatsManager()->getMetricObject("L3", m_thread->getCore()->getId(), "store-misses")->recordMetric();
+      UInt64 load_misses_l3 = Sim()->getStatsManager()->getMetricObject("L3", m_thread->getCore()->getId(), "load-misses")->recordMetric();
+      UInt64 store_misses_l3 = Sim()->getStatsManager()->getMetricObject("L3", m_thread->getCore()->getId(), "store-misses")->recordMetric();
 
+      m_papi_counters[PAPI_L1_DCM] = load_misses_l1d + store_misses_l1d;
+      m_papi_counters[PAPI_L2_DCM] = load_misses_l2 + store_misses_l2;
+      m_papi_counters[PAPI_L3_TCM] = load_misses_l3 + store_misses_l3;
 
-        m_papi_counters[PAPI_L1_DCM] = load_misses_l1d + store_misses_l1d;
-        m_papi_counters[PAPI_L2_DCM] = load_misses_l2 + store_misses_l2;
-        m_papi_counters[PAPI_L3_TCM] = load_misses_l3 + store_misses_l3;
+      m_papi_counters[PAPI_BR_MSP] = m_thread->getCore()->getPerformanceModel()->getBranchPredictor()->getNumIncorrectPredictions();
 
-        m_papi_counters[PAPI_BR_MSP] = m_thread->getCore()->getPerformanceModel()->getBranchPredictor()->getNumIncorrectPredictions();
+      for (unsigned i = 0; i < NUM_PAPI_COUNTERS; i++)
+         res.papi.values[i] = m_papi_counters[i];
 
-        for(unsigned i = 0; i < NUM_PAPI_COUNTERS; i++)
-          res.papi.values[i] = m_papi_counters[i];
-
-        return true;
-      }
-      default:
-         // Not emulated
-         return false;
+      return true;
+   }
+   default:
+      // Not emulated
+      return false;
    }
 }
 
@@ -375,42 +355,44 @@ SubsecondTime TraceThread::getCurrentTime() const
    return m_thread->getCore()->getPerformanceModel()->getElapsedTime();
 }
 
-Instruction* TraceThread::decode(Sift::Instruction &inst)
+Instruction *TraceThread::decode(Sift::Instruction &inst)
 {
 
-   //printf("PC: %lx Size: %d num_addresses=%d is_branch=%d\n", inst.sinst->addr, inst.sinst->size, inst.num_addresses, inst.is_branch);
+   // printf("PC: %lx Size: %d num_addresses=%d is_branch=%d\n", inst.sinst->addr, inst.sinst->size, inst.num_addresses, inst.is_branch);
    if (m_decoder_cache.count(inst.sinst->addr) == 0)
       m_decoder_cache[inst.sinst->addr] = staticDecode(inst);
-   
-   const dl::DecodedInst& dec_inst = *(m_decoder_cache[inst.sinst->addr]);
+
+   const dl::DecodedInst &dec_inst = *(m_decoder_cache[inst.sinst->addr]);
 
    OperandList list;
 
    // Ignore memory-referencing operands in NOP instructions
    if (!(dec_inst.is_nop()))
    {
-      for(uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
+      for (uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
          if (Sim()->getDecoder()->op_read_mem(&dec_inst, mem_idx))
             list.push_back(Operand(Operand::MEMORY, 0, Operand::READ));
 
-      for(uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
+      for (uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
          if (Sim()->getDecoder()->op_write_mem(&dec_inst, mem_idx))
             list.push_back(Operand(Operand::MEMORY, 0, Operand::WRITE));
    }
 
    Instruction *instruction;
    if (inst.is_branch)
-     instruction = new BranchInstruction(list); 
+      instruction = new BranchInstruction(list);
 
    else
       instruction = new GenericInstruction(list);
 
+   instruction->setVaddress(inst.sinst->addr);
    instruction->setAddress(va2pa(inst.sinst->addr));
    instruction->setSize(inst.sinst->size);
    instruction->setAtomic(dec_inst.is_atomic());
    instruction->setDisassembly(dec_inst.disassembly_to_str().c_str());
-   
-   const std::vector<const MicroOp*> *uops = InstructionDecoder::decode(inst.sinst->addr, &dec_inst, instruction);
+   instruction->setName(Sim()->getDecoder()->inst_name(dec_inst.inst_num_id()));
+
+   const std::vector<const MicroOp *> *uops = InstructionDecoder::decode(inst.sinst->addr, &dec_inst, instruction);
    instruction->setMicroOps(uops);
 
    return instruction;
@@ -451,16 +433,16 @@ Sift::Mode TraceThread::handleInstructionCountFunc(uint32_t icount)
       core->getPerformanceModel()->queuePseudoInstruction(new SyncInstruction(time, SyncInstruction::UNSCHEDULED));
    }
 
-   switch(Sim()->getInstrumentationMode())
+   switch (Sim()->getInstrumentationMode())
    {
-      case InstMode::FAST_FORWARD:
-         return Sift::ModeIcount;
-      case InstMode::CACHE_ONLY:
-         return Sift::ModeMemory;
-      case InstMode::DETAILED:
-         return Sift::ModeDetailed;
-      case InstMode::INVALID:
-         return Sift::ModeUnknown;
+   case InstMode::FAST_FORWARD:
+      return Sift::ModeIcount;
+   case InstMode::CACHE_ONLY:
+      return Sift::ModeMemory;
+   case InstMode::DETAILED:
+      return Sift::ModeDetailed;
+   case InstMode::INVALID:
+      return Sift::ModeUnknown;
    }
    assert(false);
 }
@@ -470,48 +452,48 @@ void TraceThread::handleCacheOnlyFunc(uint8_t icount, Sift::CacheOnlyType type, 
    Core *core = m_thread->getCore();
    if (!core)
    {
-      //LOG_PRINT_WARNING("Ignoring warmup while not on a core");
+      // LOG_PRINT_WARNING("Ignoring warmup while not on a core");
       return;
    }
-   //LOG_ASSERT_ERROR(core, "We cannot perform warmup while not on a core");
+   // LOG_ASSERT_ERROR(core, "We cannot perform warmup while not on a core");
 
    if (icount)
       core->countInstructions(0, icount);
 
-   switch(type)
+   switch (type)
    {
-      case Sift::CacheOnlyBranchTaken:
-      case Sift::CacheOnlyBranchNotTaken:
-      {
-         bool taken = (type == Sift::CacheOnlyBranchTaken);
-         bool mispredict = core->accessBranchPredictor(va2pa(eip), taken, false, va2pa(address));
-         if (mispredict)
-            core->getPerformanceModel()->handleBranchMispredict();
-         break;
-      }
+   case Sift::CacheOnlyBranchTaken:
+   case Sift::CacheOnlyBranchNotTaken:
+   {
+      bool taken = (type == Sift::CacheOnlyBranchTaken);
+      bool mispredict = core->accessBranchPredictor(va2pa(eip), taken, false, va2pa(address));
+      if (mispredict)
+         core->getPerformanceModel()->handleBranchMispredict();
+      break;
+   }
 
-      case Sift::CacheOnlyMemRead:
-      case Sift::CacheOnlyMemWrite:
-         core->accessMemory(
-               Core::NONE,
-               type == Sift::CacheOnlyMemRead ? Core::READ : Core::WRITE,
-               va2pa(address),
-               NULL,
-               4,
-               Core::MEM_MODELED_COUNT,
-               va2pa(eip));
-         break;
+   case Sift::CacheOnlyMemRead:
+   case Sift::CacheOnlyMemWrite:
+      core->accessMemory(
+          Core::NONE,
+          type == Sift::CacheOnlyMemRead ? Core::READ : Core::WRITE,
+          va2pa(address),
+          NULL,
+          4,
+          Core::MEM_MODELED_COUNT,
+          va2pa(eip));
+      break;
 
-      case Sift::CacheOnlyMemIcache:
-         if (Sim()->getConfig()->getEnableICacheModeling())
-            core->readInstructionMemory(va2pa(eip), address);
-         break;
+   case Sift::CacheOnlyMemIcache:
+      if (Sim()->getConfig()->getEnableICacheModeling())
+         core->readInstructionMemory(va2pa(eip), address);
+      break;
    }
 }
 
-const dl::DecodedInst* TraceThread::staticDecode(Sift::Instruction &inst)
+const dl::DecodedInst *TraceThread::staticDecode(Sift::Instruction &inst)
 {
-   dl::DecodedInst *dec_inst = m_factory->CreateInstruction(Sim()->getDecoder(), inst.sinst->data, 
+   dl::DecodedInst *dec_inst = m_factory->CreateInstruction(Sim()->getDecoder(), inst.sinst->data,
                                                             inst.sinst->size, inst.sinst->addr);
    Sim()->getDecoder()->decode(dec_inst, (dl::dl_isa)inst.isa);
    return dec_inst;
@@ -521,7 +503,7 @@ void TraceThread::handleInstructionWarmup(Sift::Instruction &inst, Sift::Instruc
 {
    if (m_decoder_cache.count(inst.sinst->addr) == 0)
       m_decoder_cache[inst.sinst->addr] = staticDecode(inst);
-   
+
    const dl::DecodedInst &dec_inst = *(m_decoder_cache[inst.sinst->addr]);
 
    // Warmup instruction caches
@@ -550,60 +532,60 @@ void TraceThread::handleInstructionWarmup(Sift::Instruction &inst, Sift::Instruc
       // Ignore memory-referencing operands in NOP instructions
       if (!dec_inst.is_nop())
       {
-         for(uint32_t mem_idx = 0; mem_idx <  Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
+         for (uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
          {
             if (Sim()->getDecoder()->op_read_mem(&dec_inst, mem_idx))
             {
                UInt64 mem_address;
                // LDP ARM instructions, second element to be loaded, using the address of the first element
-               if (dec_inst.is_mem_pair() && ((int)mem_idx == (inst.num_addresses + 1)))  
+               if (dec_inst.is_mem_pair() && ((int)mem_idx == (inst.num_addresses + 1)))
                {
                   LOG_ASSERT_ERROR((int)mem_idx < (inst.num_addresses + 1), "Did not receive enough data addresses");
-                  
+
                   mem_address = inst.addresses[mem_idx - 1] + Sim()->getDecoder()->size_mem_op(&dec_inst, mem_idx);
                }
                else
                {
                   LOG_ASSERT_ERROR(mem_idx < inst.num_addresses, "Did not receive enough data addresses");
-                 
+
                   mem_address = inst.addresses[mem_idx];
                }
-               
+
                bool no_mapping = false;
                UInt64 pa = va2pa(mem_address, is_prefetch ? &no_mapping : NULL);
                if (no_mapping)
                   continue;
 
                core->accessMemory(
-                     /*(is_atomic_update) ? Core::LOCK :*/ Core::NONE,
-                     (is_atomic_update) ? Core::READ_EX : Core::READ,
-                     pa,
-                     NULL,
-                     Sim()->getDecoder()->size_mem_op(&dec_inst, mem_idx),
-                     Core::MEM_MODELED_COUNT,
-                     va2pa(inst.sinst->addr));
+                   /*(is_atomic_update) ? Core::LOCK :*/ Core::NONE,
+                   (is_atomic_update) ? Core::READ_EX : Core::READ,
+                   pa,
+                   NULL,
+                   Sim()->getDecoder()->size_mem_op(&dec_inst, mem_idx),
+                   Core::MEM_MODELED_COUNT,
+                   va2pa(inst.sinst->addr));
             }
          }
 
-         for(uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
+         for (uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
          {
             if (Sim()->getDecoder()->op_write_mem(&dec_inst, mem_idx))
             {
                UInt64 mem_address;
                // STP ARM instructions, second element to be stored, using the address of the first element
-               if (dec_inst.is_mem_pair() && ((int)mem_idx == (inst.num_addresses + 1)))  
+               if (dec_inst.is_mem_pair() && ((int)mem_idx == (inst.num_addresses + 1)))
                {
                   LOG_ASSERT_ERROR((int)mem_idx < (inst.num_addresses + 1), "Did not receive enough data addresses");
-                  
+
                   mem_address = inst.addresses[mem_idx - 1] + Sim()->getDecoder()->size_mem_op(&dec_inst, mem_idx);
                }
                else
                {
                   LOG_ASSERT_ERROR(mem_idx < inst.num_addresses, "Did not receive enough data addresses");
-                 
+
                   mem_address = inst.addresses[mem_idx];
                }
-               
+
                bool no_mapping = false;
                UInt64 pa = va2pa(mem_address, is_prefetch ? &no_mapping : NULL);
                if (no_mapping)
@@ -613,13 +595,13 @@ void TraceThread::handleInstructionWarmup(Sift::Instruction &inst, Sift::Instruc
                   core->logMemoryHit(false, Core::WRITE, pa, Core::MEM_MODELED_COUNT, va2pa(inst.sinst->addr));
                else
                   core->accessMemory(
-                        /*(is_atomic_update) ? Core::UNLOCK :*/ Core::NONE,
-                        Core::WRITE,
-                        pa,
-                        NULL,
-                        Sim()->getDecoder()->size_mem_op(&dec_inst, mem_idx),
-                        Core::MEM_MODELED_COUNT,
-                        va2pa(inst.sinst->addr));
+                      /*(is_atomic_update) ? Core::UNLOCK :*/ Core::NONE,
+                      Core::WRITE,
+                      pa,
+                      NULL,
+                      Sim()->getDecoder()->size_mem_op(&dec_inst, mem_idx),
+                      Core::MEM_MODELED_COUNT,
+                      va2pa(inst.sinst->addr));
             }
          }
       }
@@ -635,7 +617,6 @@ void TraceThread::handleInstructionDetailed(Sift::Instruction &inst, Sift::Instr
       m_icache[inst.sinst->addr] = decode(inst);
    // Here get the decoder instruction without checking, because we must have it for sure
    const dl::DecodedInst &dec_inst = *(m_decoder_cache[inst.sinst->addr]);
-
    Instruction *ins = m_icache[inst.sinst->addr];
    DynamicInstruction *dynins = prfmdl->createDynamicInstruction(ins, va2pa(inst.sinst->addr));
 
@@ -651,7 +632,7 @@ void TraceThread::handleInstructionDetailed(Sift::Instruction &inst, Sift::Instr
    {
       const bool is_prefetch = dec_inst.is_prefetch();
 
-      for(uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
+      for (uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
       {
          if (Sim()->getDecoder()->op_read_mem(&dec_inst, mem_idx))
          {
@@ -659,7 +640,7 @@ void TraceThread::handleInstructionDetailed(Sift::Instruction &inst, Sift::Instr
          }
       }
 
-      for(uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
+      for (uint32_t mem_idx = 0; mem_idx < Sim()->getDecoder()->num_memory_operands(&dec_inst); ++mem_idx)
       {
          if (Sim()->getDecoder()->op_write_mem(&dec_inst, mem_idx))
          {
@@ -673,7 +654,6 @@ void TraceThread::handleInstructionDetailed(Sift::Instruction &inst, Sift::Instr
    prfmdl->queueInstruction(dynins);
 
    // simulate
-
    prfmdl->iterate();
 }
 
@@ -681,7 +661,7 @@ void TraceThread::addDetailedMemoryInfo(DynamicInstruction *dynins, Sift::Instru
 {
    UInt64 mem_address;
    // LDP/STP ARM instructions, second element to be ld/st, using the address of the first element
-   if (decoded_inst.is_mem_pair() && ((int)mem_idx == inst.num_addresses))  
+   if (decoded_inst.is_mem_pair() && ((int)mem_idx == inst.num_addresses))
    {
       assert((int)mem_idx < (inst.num_addresses + 1));
       mem_address = inst.addresses[mem_idx - 1] + Sim()->getDecoder()->size_mem_op(&decoded_inst, mem_idx);
@@ -691,31 +671,31 @@ void TraceThread::addDetailedMemoryInfo(DynamicInstruction *dynins, Sift::Instru
       assert(mem_idx < inst.num_addresses);
       mem_address = inst.addresses[mem_idx];
    }
-               
+
    bool no_mapping = false;
    UInt64 pa = va2pa(mem_address, is_prefetch ? &no_mapping : NULL);
 
    if (no_mapping)
    {
       dynins->addMemory(
-         inst.executed,
-         SubsecondTime::Zero(),
-         0,
-         Sim()->getDecoder()->size_mem_op(&decoded_inst, mem_idx),
-         op_type,
-         0,
-         HitWhere::PREFETCH_NO_MAPPING);
+          inst.executed,
+          SubsecondTime::Zero(),
+          0,
+          Sim()->getDecoder()->size_mem_op(&decoded_inst, mem_idx),
+          op_type,
+          0,
+          HitWhere::PREFETCH_NO_MAPPING);
    }
    else
    {
       dynins->addMemory(
-         inst.executed,
-         SubsecondTime::Zero(),
-         pa,
-         Sim()->getDecoder()->size_mem_op(&decoded_inst, mem_idx),
-         op_type,
-         0,
-         HitWhere::UNKNOWN);
+          inst.executed,
+          SubsecondTime::Zero(),
+          pa,
+          Sim()->getDecoder()->size_mem_op(&decoded_inst, mem_idx),
+          op_type,
+          0,
+          HitWhere::UNKNOWN);
    }
 }
 
@@ -773,7 +753,7 @@ void TraceThread::run()
 
    bool have_first = m_trace.Read(inst);
 
-   while(have_first && m_trace.Read(next_inst))
+   while (have_first && m_trace.Read(next_inst))
    {
       if (!m_started)
       {
@@ -815,24 +795,22 @@ void TraceThread::run()
       // Force BBV end on non-taken branches
       m_bbv_end = inst.is_branch;
 
-
-      switch(Sim()->getInstrumentationMode())
+      switch (Sim()->getInstrumentationMode())
       {
-         case InstMode::FAST_FORWARD:
-            break;
+      case InstMode::FAST_FORWARD:
+         break;
 
-         case InstMode::CACHE_ONLY:
-            handleInstructionWarmup(inst, next_inst, core, do_icache_warmup, icache_warmup_addr, icache_warmup_size);
-            break;
+      case InstMode::CACHE_ONLY:
+         handleInstructionWarmup(inst, next_inst, core, do_icache_warmup, icache_warmup_addr, icache_warmup_size);
+         break;
 
-         case InstMode::DETAILED:
-            handleInstructionDetailed(inst, next_inst, prfmdl);
-            break;
+      case InstMode::DETAILED:
+         handleInstructionDetailed(inst, next_inst, prfmdl);
+         break;
 
-         default:
-            LOG_PRINT_ERROR("Unknown instrumentation mode");
+      default:
+         LOG_PRINT_ERROR("Unknown instrumentation mode");
       }
-
 
       // We may have been rescheduled to a different core
       // by prfmdl->iterate (in handleInstructionDetailed),
@@ -844,7 +822,6 @@ void TraceThread::run()
          prfmdl = core->getPerformanceModel();
       }
 
-
       if (m_stop)
          break;
 
@@ -854,6 +831,8 @@ void TraceThread::run()
    printf("[TRACE:%u] -- %s --\n", m_thread->getId(), m_stop ? "STOP" : "DONE");
 
    SubsecondTime time_end = prfmdl->getElapsedTime();
+
+   writeDIPs();
 
    Sim()->getThreadManager()->onThreadExit(m_thread->getId());
    Sim()->getTraceManager()->signalDone(this, time_end, m_stop /*aborted*/);
@@ -875,44 +854,57 @@ UInt64 TraceThread::getProgressValue()
    return m_trace.getPosition();
 }
 
-void TraceThread::frontEndStop(){
-	m_trace.frontEndStop();
+void TraceThread::frontEndStop()
+{
+   m_trace.frontEndStop();
 }
 
-void TraceThread::handleAccessMemory(Core::lock_signal_t lock_signal, Core::mem_op_t mem_op_type, IntPtr d_addr, char* data_buffer, UInt32 data_size)
+void TraceThread::handleAccessMemory(Core::lock_signal_t lock_signal, Core::mem_op_t mem_op_type, IntPtr d_addr, char *data_buffer, UInt32 data_size)
 {
    Sift::MemoryLockType sift_lock_signal;
    Sift::MemoryOpType sift_mem_op;
 
    switch (lock_signal)
    {
-      case (Core::NONE):
-         sift_lock_signal = Sift::MemNoLock;
-         break;
-      case (Core::LOCK):
-         sift_lock_signal = Sift::MemLock;
-         break;
-      case (Core::UNLOCK):
-         sift_lock_signal = Sift::MemUnlock;
-         break;
-      default:
-         sift_lock_signal = Sift::MemInvalidLock;
-         break;
+   case (Core::NONE):
+      sift_lock_signal = Sift::MemNoLock;
+      break;
+   case (Core::LOCK):
+      sift_lock_signal = Sift::MemLock;
+      break;
+   case (Core::UNLOCK):
+      sift_lock_signal = Sift::MemUnlock;
+      break;
+   default:
+      sift_lock_signal = Sift::MemInvalidLock;
+      break;
    }
 
    switch (mem_op_type)
    {
-      case (Core::READ):
-      case (Core::READ_EX):
-         sift_mem_op = Sift::MemRead;
-         break;
-      case (Core::WRITE):
-         sift_mem_op = Sift::MemWrite;
-         break;
-      default:
-         sift_mem_op = Sift::MemInvalidOp;
-         break;
+   case (Core::READ):
+   case (Core::READ_EX):
+      sift_mem_op = Sift::MemRead;
+      break;
+   case (Core::WRITE):
+      sift_mem_op = Sift::MemWrite;
+      break;
+   default:
+      sift_mem_op = Sift::MemInvalidOp;
+      break;
    }
 
-   m_trace.AccessMemory(sift_lock_signal, sift_mem_op, d_addr, (uint8_t*)data_buffer, data_size);
+   m_trace.AccessMemory(sift_lock_signal, sift_mem_op, d_addr, (uint8_t *)data_buffer, data_size);
+}
+
+void TraceThread::writeDIPs()
+{
+   for (auto &p : m_icache)
+   {
+      if (p.second)
+      {
+         Sim()->getStatsManager()->recordPicsD(p.second->getVaddress(), p.second->getName(), p.second->getPICS_d());
+         Sim()->getStatsManager()->recordPicsC(p.second->getVaddress(), p.second->getName(), p.second->getPICS_c());
+      }
+   }
 }
